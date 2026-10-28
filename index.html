@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Reportes recibidos</title>
+<meta name="theme-color" content="#1f5fbf">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Reportes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icono-180.png">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<header class="barra"><div class="fila">
+  <h1 id="titulo">Reportes recibidos</h1>
+  <button id="bSync" class="oculto">Sincronizar</button>
+  <button id="bMenu" class="oculto">⋯</button>
+</div></header>
+
+<div class="envoltura">
+  <div id="aviso"></div>
+
+  <!-- sin cifrado disponible -->
+  <section id="vSinCifrado" class="oculto">
+    <div class="aviso mal">Este navegador no permite cifrar en esta dirección. Abre la app desde una dirección <b>https://</b> (o desde <b>localhost</b>). En el iPhone no funciona con una dirección <b>http://192.168…</b>.</div>
+  </section>
+
+  <!-- primera vez -->
+  <section id="vInicio" class="oculto">
+    <h2>Preparar este aparato</h2>
+    <p class="suave">Se crea una llave de cifrado que se queda solo en este aparato. Los reportes se guardan cifrados y se abren con tu PIN.</p>
+    <label for="iNombre">¿Cómo se llama este aparato?</label>
+    <input id="iNombre" placeholder="Ej. iPhone de Manuel" autocomplete="off">
+    <label for="iPin1">Elige un PIN (mínimo 6 caracteres; mejor con letras y números)</label>
+    <input id="iPin1" type="password" autocomplete="new-password">
+    <label for="iPin2">Repite el PIN</label>
+    <input id="iPin2" type="password" autocomplete="new-password">
+    <p><button id="bCrear" class="primario">Crear y entrar</button></p>
+    <p class="suave">Si olvidas el PIN no hay forma de recuperarlo: tendrías que preparar el aparato de nuevo y cargar un respaldo.</p>
+  </section>
+
+  <!-- bloqueado -->
+  <section id="vBloqueo" class="oculto">
+    <h2>Escribe tu PIN</h2>
+    <input id="iPin" type="password" autocomplete="current-password">
+    <p><button id="bAbrir" class="primario">Entrar</button></p>
+  </section>
+
+  <!-- lista -->
+  <section id="vLista" class="oculto">
+    <div id="estadoSync" class="suave" style="margin-top:12px"></div>
+    <div id="filtros" class="fila-h" style="margin:12px 0 6px"></div>
+    <input id="iBuscar" type="search" placeholder="Buscar por nombre, grupo o palabra…">
+    <div id="lista"></div>
+  </section>
+
+  <!-- detalle -->
+  <section id="vDetalle" class="oculto">
+    <p><button id="bVolver">← Volver</button></p>
+    <div id="detalle"></div>
+  </section>
+
+  <!-- menú -->
+  <section id="vMenu" class="oculto">
+    <p><button id="bCerrarMenu">← Volver</button></p>
+    <h2>Este aparato</h2>
+    <div class="tarjeta">
+      <div><b id="mNombre"></b></div>
+      <div class="suave">Identificador: <span id="mKid"></span></div>
+      <p class="suave" style="margin-bottom:4px">Código para que el administrador autorice este aparato:</p>
+      <div id="mCodigo" class="codigo"></div>
+      <p><button id="bCopiar">Copiar código</button></p>
+    </div>
+
+    <h2>Respaldo</h2>
+    <div class="tarjeta">
+      <p class="suave">El respaldo se abre con una contraseña en <b>cualquier</b> aparato tuyo. Úsalo para llenar otro aparato o como copia de seguridad. Mejor por AirDrop o USB que por la nube.</p>
+      <label for="iPassResp">Contraseña del respaldo (mínimo 8 caracteres)</label>
+      <input id="iPassResp" type="password" autocomplete="off">
+      <p class="fila-h"><button id="bExportar">Exportar respaldo</button><button id="bImportar">Cargar respaldo…</button></p>
+      <input id="fArchivo" type="file" accept=".json,application/json" class="oculto">
+    </div>
+
+    <h2>Seguridad</h2>
+    <p><button id="bBloquear">Bloquear ahora</button></p>
+  </section>
+</div>
+
+<script type="module">
+import * as C from "./src/cripto.js";
+import { abrirBoveda } from "./src/boveda.js";
+import { crearTransporte } from "./src/transporte.js";
+import { URL_BUZON } from "./config.js";
+
+const ROLES = { psicologia: "Psicología", sisbe: "SISBE", trabajo_social: "Trabajo Social", prefectos: "Prefectos", directorio: "Directorio" };
+const params = new URLSearchParams(location.search);
+const NOMBRE_BOVEDA = params.get("d") || "principal";   // ?d=iphone sirve para probar varios aparatos en una misma computadora
+const $ = function (id) { return document.getElementById(id); };
+// URL_BUZON === null: versión publicada que todavía no tiene buzón; solo muestra lo que se carga con un respaldo.
+const transporte = URL_BUZON === null ? null : crearTransporte(URL_BUZON);
+let boveda = null, registros = [], filtro = "todos", tareaBloqueo = null;
+
+function mostrar(vista) {
+  ["vSinCifrado", "vInicio", "vBloqueo", "vLista", "vDetalle", "vMenu"].forEach(function (v) { $(v).classList.toggle("oculto", v !== vista); });
+  const dentro = vista === "vLista" || vista === "vDetalle" || vista === "vMenu";
+  $("bSync").classList.toggle("oculto", !dentro);
+  $("bMenu").classList.toggle("oculto", !dentro);
+}
+function aviso(texto, tipo) {
+  const a = $("aviso");
+  a.textContent = "";
+  if (!texto) return;
+  const d = document.createElement("div");
+  d.className = "aviso " + (tipo || "info");
+  d.textContent = texto;
+  a.appendChild(d);
+}
+function fechaCorta(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return isNaN(d) ? String(iso) : d.toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" }) + " " + d.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
+}
+
+// ---------- arranque ----------
+async function iniciar() {
+  if (!C.hayCifrado() || !window.indexedDB) { mostrar("vSinCifrado"); return; }
+  boveda = await abrirBoveda(NOMBRE_BOVEDA);
+  mostrar(boveda.existe() ? "vBloqueo" : "vInicio");
+  if (boveda.existe()) $("iPin").focus();
+}
+
+$("bCrear").onclick = async function () {
+  aviso("");
+  const p1 = $("iPin1").value, p2 = $("iPin2").value;
+  if (p1 !== p2) return aviso("Los dos PIN no son iguales.", "mal");
+  try {
+    $("bCrear").disabled = true;
+    await boveda.crear(p1, $("iNombre").value.trim());
+    await entrar();
+  } catch (e) { aviso(e.message, "mal"); }
+  $("bCrear").disabled = false;
+};
+$("bAbrir").onclick = abrirConPin;
+$("iPin").addEventListener("keydown", function (e) { if (e.key === "Enter") abrirConPin(); });
+async function abrirConPin() {
+  aviso("");
+  try {
+    $("bAbrir").disabled = true;
+    await boveda.desbloquear($("iPin").value);
+    $("iPin").value = "";
+    await entrar();
+  } catch (e) { aviso(e.message, "mal"); }
+  $("bAbrir").disabled = false;
+}
+
+async function entrar() {
+  $("iPin1").value = $("iPin2").value = "";
+  await recargar();
+  mostrar("vLista");
+  armarBloqueoAutomatico();
+  sincronizar(true);
+}
+
+// ---------- lista ----------
+async function recargar() {
+  registros = await boveda.listarRegistros();
+  registros.sort(function (a, b) { return String(b.fecha || b.recibido).localeCompare(String(a.fecha || a.recibido)); });
+  pintarFiltros();
+  pintarLista();
+}
+function pintarFiltros() {
+  const cont = $("filtros");
+  cont.textContent = "";
+  const cuentas = { todos: registros.length };
+  registros.forEach(function (r) { cuentas[r.rol] = (cuentas[r.rol] || 0) + 1; });
+  ["todos"].concat(Object.keys(ROLES).filter(function (k) { return cuentas[k]; })).forEach(function (k) {
+    const c = document.createElement("span");
+    c.className = "chip filtro" + (filtro === k ? " activo" : "");
+    c.textContent = (k === "todos" ? "Todos" : ROLES[k]) + " (" + (cuentas[k] || 0) + ")";
+    c.onclick = function () { filtro = k; pintarFiltros(); pintarLista(); };
+    cont.appendChild(c);
+  });
+}
+function pintarLista() {
+  const cont = $("lista");
+  cont.textContent = "";
+  const q = $("iBuscar").value.trim().toLowerCase();
+  const vistos = registros.filter(function (r) {
+    if (filtro !== "todos" && r.rol !== filtro) return false;
+    if (!q) return true;
+    return (String(r.resumen || "") + " " + (r.campos || []).map(function (c) { return c[0] + " " + c[1]; }).join(" ")).toLowerCase().indexOf(q) >= 0;
+  });
+  if (!vistos.length) {
+    const v = document.createElement("p");
+    v.className = "suave";
+    v.textContent = registros.length ? "Nada coincide con la búsqueda." : "Todavía no hay reportes en este aparato. Toca Sincronizar.";
+    cont.appendChild(v);
+    return;
+  }
+  vistos.forEach(function (r) {
+    const t = document.createElement("div");
+    t.className = "tarjeta clic";
+    const f1 = document.createElement("div");
+    f1.className = "fila-h entre";
+    const chip = document.createElement("span");
+    chip.className = "chip";
+    chip.textContent = ROLES[r.rol] || r.rol;
+    const fecha = document.createElement("span");
+    fecha.className = "suave";
+    fecha.textContent = fechaCorta(r.fecha || r.recibido);
+    f1.appendChild(chip); f1.appendChild(fecha);
+    const tit = document.createElement("div");
+    tit.style.cssText = "font-weight:600;margin-top:6px";
+    tit.textContent = r.resumen || "(sin título)";
+    t.appendChild(f1); t.appendChild(tit);
+    if (r.rev > 1) { const e = document.createElement("div"); e.className = "suave"; e.textContent = "Corregido (versión " + r.rev + ")"; t.appendChild(e); }
+    t.onclick = function () { abrirDetalle(r); };
+    cont.appendChild(t);
+  });
+}
+$("iBuscar").addEventListener("input", pintarLista);
+
+function abrirDetalle(r) {
+  const d = $("detalle");
+  d.textContent = "";
+  const t = document.createElement("div");
+  t.className = "tarjeta";
+  const chip = document.createElement("span");
+  chip.className = "chip"; chip.textContent = ROLES[r.rol] || r.rol;
+  const h = document.createElement("h2");
+  h.style.marginTop = "8px"; h.textContent = r.resumen || "(sin título)";
+  const f = document.createElement("div");
+  f.className = "suave"; f.textContent = "Fecha del reporte: " + fechaCorta(r.fecha) + " · Recibido: " + fechaCorta(r.recibido);
+  const dl = document.createElement("dl");
+  dl.className = "campos";
+  (r.campos || []).forEach(function (c) {
+    const dt = document.createElement("dt"); dt.textContent = c[0];
+    const dd = document.createElement("dd"); dd.textContent = c[1];
+    dl.appendChild(dt); dl.appendChild(dd);
+  });
+  t.appendChild(chip); t.appendChild(h); t.appendChild(f); t.appendChild(dl);
+  d.appendChild(t);
+  mostrar("vDetalle");
+  window.scrollTo(0, 0);
+}
+$("bVolver").onclick = function () { mostrar("vLista"); };
+
+// ---------- sincronizar ----------
+let sincronizando = false;
+async function sincronizar(silencioso) {
+  if (sincronizando || !boveda || !boveda.abierta()) return;
+  if (!transporte) {
+    $("estadoSync").textContent = "Esta versión todavía no está conectada al buzón. Muestra los reportes que cargues con un respaldo (⋯ → Cargar respaldo).";
+    return;
+  }
+  sincronizando = true;
+  $("bSync").disabled = true;
+  const info = boveda.info();
+  try {
+    const entrantes = await transporte.pendientes(info.kid);
+    let nuevos = 0, actualizados = 0, repetidos = 0, fallidos = 0;
+    for (const env of entrantes) {
+      try {
+        const carga = await C.abrir(env, info.kid, boveda.privada());
+        carga.recibido = new Date().toISOString();
+        carga.envio = env.id;
+        const r = await boveda.guardarRegistro(carga);
+        if (r === "nuevo") nuevos++; else if (r === "actualizado") actualizados++; else repetidos++;
+        await transporte.confirmar(env.id, info.kid);   // solo se borra del buzón DESPUÉS de guardarlo aquí
+      } catch (e) { fallidos++; }
+    }
+    await recargar();
+    let texto = "Última sincronización: " + new Date().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
+    if (entrantes.length) texto += " · " + nuevos + " nuevos" + (actualizados ? ", " + actualizados + " corregidos" : "") + (repetidos ? ", " + repetidos + " repetidos" : "");
+    else texto += " · nada nuevo";
+    $("estadoSync").textContent = texto;
+    if (fallidos) aviso(fallidos + " mensaje(s) no se pudieron abrir y siguen esperando en el buzón.", "alerta");
+    else if (!silencioso || nuevos + actualizados) aviso(nuevos + actualizados ? "Llegaron " + (nuevos + actualizados) + " reporte(s)." : "", "ok");
+    else aviso("");
+  } catch (e) {
+    $("estadoSync").textContent = "Sin conexión con el buzón. Se muestran los reportes guardados en este aparato.";
+    if (!silencioso) aviso("No se pudo sincronizar: " + e.message, "alerta");
+  }
+  $("bSync").disabled = false;
+  sincronizando = false;
+}
+$("bSync").onclick = function () { sincronizar(false); };
+
+// ---------- menú / respaldo ----------
+$("bMenu").onclick = function () {
+  const i = boveda.info();
+  $("mNombre").textContent = i.nombre;
+  $("mKid").textContent = i.kid;
+  $("mCodigo").textContent = JSON.stringify({ kid: i.kid, nombre: i.nombre, pub: i.pub });
+  mostrar("vMenu");
+};
+$("bCerrarMenu").onclick = function () { mostrar("vLista"); };
+$("bCopiar").onclick = async function () {
+  try { await navigator.clipboard.writeText($("mCodigo").textContent); aviso("Código copiado.", "ok"); }
+  catch (e) { aviso("No se pudo copiar solo; mantén presionado el código para copiarlo.", "alerta"); }
+};
+$("bExportar").onclick = async function () {
+  aviso("");
+  try {
+    const blob = await boveda.exportarRespaldo($("iPassResp").value);
+    const nombre = "respaldo-reportes-" + new Date().toISOString().slice(0, 10) + ".json";
+    const archivo = new File([JSON.stringify(blob)], nombre, { type: "application/json" });
+    if (navigator.canShare && navigator.canShare({ files: [archivo] })) { await navigator.share({ files: [archivo] }); }
+    else {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(archivo); a.download = nombre; a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+    }
+    aviso("Respaldo exportado: " + nombre, "ok");
+  } catch (e) { if (e.name !== "AbortError") aviso(e.message, "mal"); }
+};
+$("bImportar").onclick = function () { $("fArchivo").click(); };
+$("fArchivo").onchange = async function () {
+  const f = $("fArchivo").files[0];
+  $("fArchivo").value = "";
+  if (!f) return;
+  aviso("");
+  try {
+    const cuenta = await boveda.importarRespaldo(JSON.parse(await f.text()), $("iPassResp").value);
+    await recargar();
+    aviso("Respaldo cargado: " + cuenta.nuevo + " nuevos, " + cuenta.actualizado + " corregidos, " + cuenta.repetido + " ya estaban.", "ok");
+  } catch (e) { aviso(e.message, "mal"); }
+};
+$("bBloquear").onclick = bloquear;
+
+// ---------- bloqueo ----------
+function bloquear() {
+  boveda.bloquear();
+  registros = [];
+  $("lista").textContent = ""; $("detalle").textContent = "";
+  aviso("");
+  mostrar("vBloqueo");
+  $("iPin").focus();
+}
+let bloqueoArmado = false;
+function armarBloqueoAutomatico() {
+  if (bloqueoArmado) return;
+  bloqueoArmado = true;
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) { tareaBloqueo = setTimeout(function () { if (boveda.abierta()) bloquear(); }, 60000); }
+    else {
+      clearTimeout(tareaBloqueo);
+      if (boveda.abierta()) sincronizar(true);
+    }
+  });
+}
+
+// Funciona sin internet una vez abierta: se guarda el código de la app. Solo en https (o con ?sw=1 para probar en localhost).
+if ("serviceWorker" in navigator && (location.protocol === "https:" || params.get("sw") === "1")) {
+  navigator.serviceWorker.register("sw.js").catch(function () { /* sin modo sin conexión */ });
+}
+
+iniciar().catch(function (e) { aviso("Error al iniciar: " + e.message, "mal"); });
+</script>
+</body>
+</html>
