@@ -75,6 +75,15 @@
       <p><button id="bCopiar">Copiar código</button></p>
     </div>
 
+    <h2>Buzón</h2>
+    <div class="tarjeta">
+      <div id="bEstado" class="suave"></div>
+      <label for="iClave">Clave del buzón (te la da el administrador)</label>
+      <input id="iClave" type="password" autocomplete="off" placeholder="Pégala aquí">
+      <p class="fila-h"><button id="bGuardarClave">Guardar clave</button><button id="bQuitarClave" class="peligro oculto">Quitar clave</button></p>
+      <div id="avisoClave"></div>
+    </div>
+
     <h2>Respaldo</h2>
     <div class="tarjeta">
       <p class="suave">El respaldo se abre con una contraseña en <b>cualquier</b> aparato tuyo. Úsalo para llenar otro aparato o como copia de seguridad. Mejor por AirDrop o USB que por la nube.</p>
@@ -99,15 +108,24 @@
 import * as C from "./src/cripto.js";
 import { abrirBoveda } from "./src/boveda.js";
 import { crearTransporte } from "./src/transporte.js";
+import { crearTransporteFirestore, claveValida } from "./src/transporte-firestore.js";
 import { URL_BUZON } from "./config.js";
 
 const ROLES = { psicologia: "Psicología", sisbe: "SISBE", trabajo_social: "Trabajo Social", prefectos: "Prefectos", directorio: "Directorio" };
-const VERSION_APP = "reportes-v3 (2026-10-28)";   // igual que CACHE en sw.js
+const VERSION_APP = "reportes-v4 (2026-10-28)";   // igual que CACHE en sw.js
 const params = new URLSearchParams(location.search);
 const NOMBRE_BOVEDA = params.get("d") || "principal";   // ?d=iphone sirve para probar varios aparatos en una misma computadora
 const $ = function (id) { return document.getElementById(id); };
-// URL_BUZON === null: versión publicada que todavía no tiene buzón; solo muestra lo que se carga con un respaldo.
-const transporte = URL_BUZON === null ? null : crearTransporte(URL_BUZON);
+// Buzón: si el aparato guardó la "clave del buzón" se usa el buzón REAL (Firestore). Si no: URL_BUZON === null = sin buzón
+// (solo respaldos); "" = buzón simulado de pruebas en la misma computadora.
+let transporte = URL_BUZON === null ? null : crearTransporte(URL_BUZON);
+let modoBuzon = URL_BUZON === null ? "ninguno" : "simulado";
+async function prepararTransporte() {
+  const guardada = await boveda.leerSecreto("claveBuzon");
+  const clave = guardada ? new TextDecoder().decode(guardada) : "";
+  if (claveValida(clave)) { transporte = crearTransporteFirestore({ clave: clave }); modoBuzon = "real"; }
+  else { transporte = URL_BUZON === null ? null : crearTransporte(URL_BUZON); modoBuzon = URL_BUZON === null ? "ninguno" : "simulado"; }
+}
 let boveda = null, registros = [], filtro = "todos", tareaBloqueo = null;
 
 function mostrar(vista) {
@@ -166,6 +184,7 @@ async function abrirConPin() {
 async function entrar() {
   $("iPin1").value = $("iPin2").value = "";
   await recargar();
+  await prepararTransporte();
   mostrar("vLista");
   armarBloqueoAutomatico();
   sincronizar(true);
@@ -302,6 +321,7 @@ $("bMenu").onclick = function () {
   $("mNombre").textContent = i.nombre;
   $("mKid").textContent = i.kid;
   $("mVersion").textContent = "Versión de la app: " + VERSION_APP;
+  pintarEstadoBuzon();
   $("mCodigo").textContent = JSON.stringify({ kid: i.kid, nombre: i.nombre, pub: i.pub });
   mostrar("vMenu");
 };
@@ -378,6 +398,44 @@ $("fArchivo").onchange = async function () {
   } catch (e) { avisoResp(e.message, "mal"); }
 };
 $("bBloquear").onclick = bloquear;
+
+// ---------- clave del buzón ----------
+function avisoClave(texto, tipo) {
+  const a = $("avisoClave");
+  a.textContent = "";
+  if (!texto) return;
+  const d = document.createElement("div");
+  d.className = "aviso " + (tipo || "info");
+  d.textContent = texto;
+  a.appendChild(d);
+}
+function pintarEstadoBuzon() {
+  $("bEstado").textContent = modoBuzon === "real" ? "✓ Conectado al buzón. Los reportes llegan solos al sincronizar."
+    : modoBuzon === "simulado" ? "Buzón de pruebas (solo en esta computadora)."
+    : "Sin conectar: pega la clave del buzón para recibir reportes. Mientras tanto puedes cargar respaldos.";
+  $("bQuitarClave").classList.toggle("oculto", modoBuzon !== "real");
+}
+$("bGuardarClave").onclick = async function () {
+  avisoClave("");
+  const clave = $("iClave").value.trim();
+  if (!claveValida(clave)) return avisoClave("La clave no es válida: debe tener entre 32 y 128 letras, números, guiones o guiones bajos, sin espacios.", "mal");
+  try {
+    await boveda.guardarSecreto("claveBuzon", new TextEncoder().encode(clave));
+    $("iClave").value = "";
+    await prepararTransporte();
+    pintarEstadoBuzon();
+    avisoClave("Clave guardada. Vuelve a la lista y toca Sincronizar.", "ok");
+  } catch (e) { avisoClave(e.message, "mal"); }
+};
+$("bQuitarClave").onclick = async function () {
+  avisoClave("");
+  try {
+    await boveda.guardarSecreto("claveBuzon", new Uint8Array(0));
+    await prepararTransporte();
+    pintarEstadoBuzon();
+    avisoClave("Clave quitada. Este aparato ya no recibe reportes nuevos (los guardados siguen aquí).", "info");
+  } catch (e) { avisoClave(e.message, "mal"); }
+};
 
 // ---------- bloqueo ----------
 function bloquear() {
