@@ -91,6 +91,7 @@
 
     <h2>Seguridad</h2>
     <p><button id="bBloquear">Bloquear ahora</button></p>
+    <p class="suave" id="mVersion"></p>
   </section>
 </div>
 
@@ -101,6 +102,7 @@ import { crearTransporte } from "./src/transporte.js";
 import { URL_BUZON } from "./config.js";
 
 const ROLES = { psicologia: "Psicología", sisbe: "SISBE", trabajo_social: "Trabajo Social", prefectos: "Prefectos", directorio: "Directorio" };
+const VERSION_APP = "reportes-v3 (2026-10-28)";   // igual que CACHE en sw.js
 const params = new URLSearchParams(location.search);
 const NOMBRE_BOVEDA = params.get("d") || "principal";   // ?d=iphone sirve para probar varios aparatos en una misma computadora
 const $ = function (id) { return document.getElementById(id); };
@@ -299,6 +301,7 @@ $("bMenu").onclick = function () {
   const i = boveda.info();
   $("mNombre").textContent = i.nombre;
   $("mKid").textContent = i.kid;
+  $("mVersion").textContent = "Versión de la app: " + VERSION_APP;
   $("mCodigo").textContent = JSON.stringify({ kid: i.kid, nombre: i.nombre, pub: i.pub });
   mostrar("vMenu");
 };
