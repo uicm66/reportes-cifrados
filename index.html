@@ -82,6 +82,11 @@
       <input id="iPassResp" type="password" autocomplete="off">
       <p class="fila-h"><button id="bExportar">Exportar respaldo</button><button id="bImportar">Cargar respaldo…</button></p>
       <input id="fArchivo" type="file" accept=".json,application/json" class="oculto">
+      <div id="avisoResp"></div>
+      <div id="respaldoListo" class="tarjeta oculto" style="margin:10px 0 0">
+        <div><b>Respaldo listo:</b> <span id="rNombre"></span></div>
+        <p class="fila-h" style="margin-bottom:0"><button id="bCompartir" class="primario">Compartir (AirDrop…)</button><button id="bDescargar">Descargar archivo</button></p>
+      </div>
     </div>
 
     <h2>Seguridad</h2>
@@ -302,32 +307,72 @@ $("bCopiar").onclick = async function () {
   try { await navigator.clipboard.writeText($("mCodigo").textContent); aviso("Código copiado.", "ok"); }
   catch (e) { aviso("No se pudo copiar solo; mantén presionado el código para copiarlo.", "alerta"); }
 };
+// El aviso del respaldo sale justo debajo de los botones (el de arriba no se ve si la página está desplazada).
+function avisoResp(texto, tipo) {
+  const a = $("avisoResp");
+  a.textContent = "";
+  if (!texto) return;
+  const d = document.createElement("div");
+  d.className = "aviso " + (tipo || "info");
+  d.textContent = texto;
+  a.appendChild(d);
+}
+// Exportar en dos pasos: primero se prepara el archivo (cifrado, tarda un momento) y luego Compartir/Descargar
+// se ejecutan directo al tocar el botón. Así Safari no bloquea la acción por haber pasado tiempo desde el toque.
+let respaldoListo = null;
 $("bExportar").onclick = async function () {
-  aviso("");
+  avisoResp("");
+  $("respaldoListo").classList.add("oculto");
+  respaldoListo = null;
   try {
+    $("bExportar").disabled = true;
+    avisoResp("Preparando el respaldo…", "info");
     const blob = await boveda.exportarRespaldo($("iPassResp").value);
     const nombre = "respaldo-reportes-" + new Date().toISOString().slice(0, 10) + ".json";
-    const archivo = new File([JSON.stringify(blob)], nombre, { type: "application/json" });
-    if (navigator.canShare && navigator.canShare({ files: [archivo] })) { await navigator.share({ files: [archivo] }); }
-    else {
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(archivo); a.download = nombre; a.click();
-      setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
-    }
-    aviso("Respaldo exportado: " + nombre, "ok");
-  } catch (e) { if (e.name !== "AbortError") aviso(e.message, "mal"); }
+    respaldoListo = new File([JSON.stringify(blob)], nombre, { type: "application/json" });
+    $("rNombre").textContent = nombre;
+    $("bCompartir").classList.toggle("oculto", !(navigator.canShare && navigator.canShare({ files: [respaldoListo] })));
+    $("respaldoListo").classList.remove("oculto");
+    avisoResp("Respaldo preparado. Toca Compartir o Descargar.", "ok");
+  } catch (e) { avisoResp(e.message, "mal"); }
+  $("bExportar").disabled = false;
+};
+$("bCompartir").onclick = function () {
+  if (!respaldoListo) return;
+  navigator.share({ files: [respaldoListo] })
+    .then(function () { avisoResp("Respaldo compartido.", "ok"); })
+    .catch(function (e) { if (e.name !== "AbortError") avisoResp("No se pudo compartir (" + e.message + "). Usa Descargar archivo.", "alerta"); });
+};
+$("bDescargar").onclick = function () {
+  if (!respaldoListo) return;
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(respaldoListo);
+  a.download = respaldoListo.name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(function () { URL.revokeObjectURL(a.href); }, 10000);
+  avisoResp("Descarga iniciada: " + respaldoListo.name + ". Búscalo en Descargas.", "ok");
 };
 $("bImportar").onclick = function () { $("fArchivo").click(); };
 $("fArchivo").onchange = async function () {
   const f = $("fArchivo").files[0];
   $("fArchivo").value = "";
   if (!f) return;
-  aviso("");
+  avisoResp("");
   try {
     const cuenta = await boveda.importarRespaldo(JSON.parse(await f.text()), $("iPassResp").value);
     await recargar();
-    aviso("Respaldo cargado: " + cuenta.nuevo + " nuevos, " + cuenta.actualizado + " corregidos, " + cuenta.repetido + " ya estaban.", "ok");
-  } catch (e) { aviso(e.message, "mal"); }
+    // Al terminar se regresa a la lista para ver los reportes y el resultado (no se queda en el menú).
+    avisoResp("");
+    $("respaldoListo").classList.add("oculto");
+    const traidos = cuenta.nuevo + cuenta.actualizado;
+    aviso(traidos
+      ? "✓ Respaldo importado: " + cuenta.nuevo + " reporte(s) nuevo(s)" + (cuenta.actualizado ? ", " + cuenta.actualizado + " corregido(s)" : "") + (cuenta.repetido ? " (" + cuenta.repetido + " ya estaban)" : "") + "."
+      : "El respaldo se abrió bien, pero no traía nada nuevo: los " + cuenta.repetido + " reporte(s) ya estaban en este aparato.", traidos ? "ok" : "info");
+    mostrar("vLista");
+    window.scrollTo(0, 0);
+  } catch (e) { avisoResp(e.message, "mal"); }
 };
 $("bBloquear").onclick = bloquear;
 

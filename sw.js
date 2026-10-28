@@ -1,6 +1,6 @@
 // Guarda el código de la app para que abra sin internet. NO guarda ningún dato: los reportes viven en la bóveda cifrada del aparato.
 // Al publicar una versión nueva, subir el número de CACHE para que los aparatos se actualicen.
-const CACHE = "reportes-v1";
+const CACHE = "reportes-v2";
 const ARCHIVOS = [
   "./", "./index.html", "./estilo.css", "./config.js", "./manifest.json",
   "./src/cripto.js", "./src/boveda.js", "./src/transporte.js",
