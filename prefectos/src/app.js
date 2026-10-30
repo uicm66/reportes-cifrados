@@ -83,7 +83,7 @@ const HORAS_PROGRAMADAS = ['07:00', '07:50', '08:40', '09:30', '10:40', '11:30',
 let retardosEnCurso = {}; // { '07:00': { llegada: '07:13', grupo: '1A' } } - solo horas con llegada tienen entrada
 
 // Modo sin conexión: se guarda el código de la página (nunca datos). Solo en https, o con ?sw=1 para probar en la computadora.
-const VERSION_PREFECTOS = "prefectos-v3 (2026-10-29)";   // igual que CACHE en sw.js
+const VERSION_PREFECTOS = "prefectos-v4 (2026-10-30)";   // igual que CACHE en sw.js
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || new URLSearchParams(location.search).get('sw') === '1')) {
   navigator.serviceWorker.register('sw.js').catch(function () { /* sin modo sin conexión */ });
 }
@@ -129,11 +129,18 @@ function _pfAplicarCatalogo() {
     var h = document.getElementById('pf-encabezado'); if (h) h.textContent = ('PREFECTOS · ' + e.nombre).toUpperCase();
   }
 }
+// Rótulo fijo arriba: "PRIMER GRADO" / "SEGUNDO GRADO" / "TERCER GRADO" (o aviso si aún no tiene grado)
+function _pfRotuloGrado(grado) {
+  var el = document.getElementById('header-grado'); if (!el) return;
+  var n = { 1: 'PRIMER GRADO', 2: 'SEGUNDO GRADO', 3: 'TERCER GRADO' }[parseInt(grado, 10)];
+  el.textContent = n || 'SIN GRADO ASIGNADO';
+}
 function _pfEntrar() {
   var p = Buzon.perfil();
   _pfAplicarCatalogo();
   prefectoActual = { uid: p.correo, nombre: p.nombre, grado: p.grado, bloqueado: !!p.bloqueado };
   document.getElementById('header-nombre').textContent = p.nombre;
+  _pfRotuloGrado(p.grado);
   mostrarPantalla('app-screen');
   if (!_pfAppIniciada) { _pfAppIniciada = true; iniciarApp(); }
 }
@@ -153,6 +160,7 @@ async function _pfPerfilCambio() {
   _pfAplicarCatalogo();
   prefectoActual.nombre = p.nombre; prefectoActual.grado = p.grado;
   document.getElementById('header-nombre').textContent = p.nombre;
+  _pfRotuloGrado(p.grado);
   listaMaestros.length = 0;
   await cargarMaestros();
   renderHorasGrupoLista(); renderRetardoLista();
