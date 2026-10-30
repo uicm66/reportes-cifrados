@@ -112,7 +112,7 @@ import { crearTransporteFirestore, claveValida } from "./src/transporte-firestor
 import { URL_BUZON } from "./config.js";
 
 const ROLES = { psicologia: "Psicología", sisbe: "SISBE", trabajo_social: "Trabajo Social", prefectos: "Prefectos", directorio: "Directorio" };
-const VERSION_APP = "reportes-v4 (2026-10-28)";   // igual que CACHE en sw.js
+const VERSION_APP = "reportes-v5 (2026-10-29)";   // igual que CACHE en sw.js
 const params = new URLSearchParams(location.search);
 const NOMBRE_BOVEDA = params.get("d") || "principal";   // ?d=iphone sirve para probar varios aparatos en una misma computadora
 const $ = function (id) { return document.getElementById(id); };

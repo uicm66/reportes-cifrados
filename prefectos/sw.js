@@ -1,6 +1,6 @@
 // Guarda el CÓDIGO de la página de prefectos para que abra sin internet. NUNCA guarda datos: los reportes y la lista de maestros
 // viven cifrados en la memoria del celular. Al publicar una versión nueva, subir CACHE (y VERSION_PREFECTOS en src/app.js).
-const CACHE = "prefectos-v1";
+const CACHE = "prefectos-v2";
 const ARCHIVOS = [
   "./", "./index.html", "./manifest.json", "./src/app.js", "./src/style.css", "./src/buzon-prefecto.js", "./src/local-db/motorLocal.js",
   "../src/cripto.js", "../src/transporte-firestore.js", "../src/alta-aparato.js", "../src/perfil-prefecto.js", "../src/reporte-prefectos.js",
@@ -13,7 +13,8 @@ self.addEventListener("install", function (e) {
 });
 self.addEventListener("activate", function (e) {
   e.waitUntil(caches.keys().then(function (n) {
-    return Promise.all(n.filter(function (x) { return x !== CACHE; }).map(function (x) { return caches.delete(x); }));
+    // solo versiones VIEJAS de esta página (prefijo "prefectos-"): la app de consulta comparte el sitio y tiene las suyas
+    return Promise.all(n.filter(function (x) { return x !== CACHE && x.indexOf("prefectos-") === 0; }).map(function (x) { return caches.delete(x); }));
   }).then(function () { return self.clients.claim(); }));
 });
 // Solo archivos de la propia página. Las llamadas al buzón (otro dominio) siempre van directo a la red.

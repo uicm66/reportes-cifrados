@@ -1,6 +1,6 @@
 // Guarda el código de la app para que abra sin internet. NO guarda ningún dato: los reportes viven en la bóveda cifrada del aparato.
 // Al publicar una versión nueva, subir el número de CACHE para que los aparatos se actualicen.
-const CACHE = "reportes-v4";
+const CACHE = "reportes-v5";
 const ARCHIVOS = [
   "./", "./index.html", "./estilo.css", "./config.js", "./manifest.json",
   "./src/cripto.js", "./src/boveda.js", "./src/transporte.js", "./src/transporte-firestore.js",
@@ -18,7 +18,8 @@ self.addEventListener("install", function (e) {
 self.addEventListener("activate", function (e) {
   e.waitUntil(
     caches.keys().then(function (nombres) {
-      return Promise.all(nombres.filter(function (n) { return n !== CACHE; }).map(function (n) { return caches.delete(n); }));
+      // solo se borran versiones VIEJAS de esta misma app (prefijo "reportes-"): la página de prefectos comparte el sitio y tiene las suyas
+      return Promise.all(nombres.filter(function (n) { return n !== CACHE && n.indexOf("reportes-") === 0; }).map(function (n) { return caches.delete(n); }));
     }).then(function () { return self.clients.claim(); })
   );
 });
