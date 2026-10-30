@@ -83,7 +83,7 @@ const HORAS_PROGRAMADAS = ['07:00', '07:50', '08:40', '09:30', '10:40', '11:30',
 let retardosEnCurso = {}; // { '07:00': { llegada: '07:13', grupo: '1A' } } - solo horas con llegada tienen entrada
 
 // Modo sin conexión: se guarda el código de la página (nunca datos). Solo en https, o con ?sw=1 para probar en la computadora.
-const VERSION_PREFECTOS = "prefectos-v2 (2026-10-29)";   // igual que CACHE en sw.js
+const VERSION_PREFECTOS = "prefectos-v3 (2026-10-29)";   // igual que CACHE en sw.js
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || new URLSearchParams(location.search).get('sw') === '1')) {
   navigator.serviceWorker.register('sw.js').catch(function () { /* sin modo sin conexión */ });
 }

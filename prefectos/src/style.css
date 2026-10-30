@@ -558,3 +558,7 @@ body {
 .lista-maestros .item-maestro:last-child { border-bottom:none; }
 .lista-maestros .item-maestro:active { background:#eef0ff; }
 .lista-maestros .sin-resultados { padding:10px 12px; font-size:0.9rem; color:#999; font-style:italic; }
+
+/* Buscadores de maestro: sin la "x" de los campos de búsqueda (los marcamos como "search" para que Safari no les ponga encima los contactos de la Mac) */
+#input-maestro, #input-paes, #input-paes-ret { -webkit-appearance:none; appearance:none; }
+#input-maestro::-webkit-search-cancel-button, #input-paes::-webkit-search-cancel-button, #input-paes-ret::-webkit-search-cancel-button { display:none; -webkit-appearance:none; }
