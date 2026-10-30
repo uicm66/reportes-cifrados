@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1a237e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Prefectos">
+  <title>Prefectos</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icono-180.png">
+  <link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+
+  <!-- PANTALLA LOGIN -->
+  <div id="login-screen">
+    <div class="login-card">
+      <h1 id="pf-titulo">Prefectos</h1>
+      <p class="subtitle" id="pf-escuela">Reporte de inasistencias y retardos</p>
+      <div class="form-group">
+        <label>Correo</label>
+        <input type="email" id="login-email" placeholder="correo@escuela.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="btn-primary" id="btn-login">Entrar</button>
+      <p class="error-msg" id="login-error"></p>
+      <p id="pf-version" style="margin:10px 0 0;font-size:0.7rem;color:#9e9e9e;text-align:center;"></p>
+    </div>
+  </div>
+
+  <!-- PANTALLA DE ALTA (la primera vez en este celular) -->
+  <div id="alta-screen" style="display:none;">
+    <div class="login-card">
+      <h1>Prefectos</h1>
+      <p class="subtitle" id="alta-titulo"></p>
+      <p id="alta-texto" style="font-size:0.95rem;line-height:1.45;color:#444;margin:0 0 14px;"></p>
+      <button class="btn-primary" id="btn-alta-revisar" style="display:none;">Revisar ahora</button>
+      <p class="error-msg" id="alta-error"></p>
+    </div>
+  </div>
+
+  <!-- PANTALLA BLOQUEADA -->
+  <div id="bloqueado-screen" style="display:none;" class="bloqueado-screen">
+    <h2>Acceso suspendido</h2>
+    <p>Tu acceso ha sido desactivado temporalmente.<br>Comunícate con el director.</p>
+  </div>
+
+  <!-- APP PRINCIPAL -->
+  <div id="app-screen">
+    <div class="app-header">
+      <div>
+        <div id="pf-encabezado" style="font-size:0.75rem;opacity:0.8;">PREFECTOS</div>
+        <div id="header-nombre" class="app-header h2" style="font-size:1rem;font-weight:600;"></div>
+      </div>
+      <button class="btn-logout" id="btn-logout">Salir</button>
+    </div>
+
+    <div class="app-tabs">
+      <button class="app-tab active" data-tab="maestros">Maestros</button>
+      <button class="app-tab" data-tab="asistencia">Asistencia alumnos</button>
+    </div>
+
+    <div class="app-content">
+
+      <div id="seccion-maestros">
+
+      <!-- FORMULARIO -->
+      <div class="card">
+        <!-- TOGGLE TIPO -->
+        <div class="tipo-toggle">
+          <button class="tipo-btn selected" data-tipo="inasistencia">Inasistencia</button>
+          <button class="tipo-btn" data-tipo="retardo">Retardo</button>
+        </div>
+
+        <div class="form-group">
+          <label>Maestro</label>
+          <div id="buscador-maestro" class="buscador-maestro">
+            <input type="text" id="input-maestro" name="busqueda-maestro-1a2b3c" autocomplete="off" placeholder="Escribe apellido o nombre">
+            <button type="button" id="btn-limpiar-maestro" class="btn-limpiar-maestro" aria-label="Limpiar" style="display:none;">&times;</button>
+          </div>
+          <div id="lista-maestros" class="lista-maestros"></div>
+          <input type="hidden" id="select-maestro" value="">
+        </div>
+
+        <div class="form-group">
+          <label>Fecha</label>
+          <input type="date" id="input-fecha">
+        </div>
+
+        <!-- CAMPOS INASISTENCIA -->
+        <div id="campos-inasistencia">
+          <div class="form-group">
+            <label>¿Qué horas faltó y con qué grupo?</label>
+            <div class="horas-grupo-lista" id="horas-grupo-lista"></div>
+            <p class="hint-texto" style="font-size:12px;color:#185fa5;background:#e6f1fb;border-radius:6px;padding:7px 10px;margin-top:8px;line-height:1.5;">Toca la hora en la que faltó y elige el grupo. Puedes ir marcando conforme pasa el día, o marcar varias al final — funciona igual.</p>
+          </div>
+
+          <div class="form-group" id="resumen-inasistencia" style="display:none;">
+            <label>Se van a enviar <span id="resumen-count">0</span> registro(s)</label>
+            <div id="resumen-grupos-lista"></div>
+          </div>
+        </div>
+
+        <!-- CAMPOS RETARDO -->
+        <div id="campos-retardo" style="display:none;">
+          <div class="form-group">
+            <label>¿A qué hora llegó y con qué grupo?</label>
+            <div class="retardo-lista" id="retardo-lista"></div>
+            <p class="hint-texto" style="font-size:12px;color:#185fa5;background:#e6f1fb;border-radius:6px;padding:7px 10px;margin-top:8px;line-height:1.5;">Escribe la hora real de llegada solo en el módulo donde el maestro llegó tarde, y elige el grupo — los minutos de retardo se calculan solos.</p>
+          </div>
+
+          <div class="form-group" id="resumen-retardo" style="display:none;">
+            <label>Se van a enviar <span id="resumen-retardo-count">0</span> registro(s)</label>
+            <div id="resumen-retardo-lista"></div>
+          </div>
+        </div>
+
+        <button class="btn-enviar" id="btn-enviar">Enviar registro</button>
+
+        <!-- SECCION PAES -->
+        <div id="seccion-paes" style="border-top:2px solid #0f6e56;margin-top:24px;padding-top:16px;">
+          <h3 style="margin:0 0 4px;font-size:16px;color:#0f6e56;">Personal PAES</h3>
+
+          <!-- INASISTENCIA PAES -->
+          <div class="form-group" id="paes-bloque-inasistencia" style="margin-top:12px;">
+            <label>Inasistencia PAES</label>
+            <div style="position:relative;">
+              <input type="text" id="input-paes" name="busqueda-paes-1a2b3c" placeholder="Escribe apellido o nombre" autocomplete="off" style="width:100%;box-sizing:border-box;">
+              <div id="lista-paes" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:0.5px solid #ccc;border-radius:6px;z-index:100;max-height:180px;overflow-y:auto;"></div>
+            </div>
+            <input type="hidden" id="select-paes">
+            <div style="display:flex;align-items:center;gap:6px;margin-top:8px;">
+              <span style="background:#e1f5ee;color:#0f6e56;font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px;">Jornada completa</span>
+              <span style="font-size:12px;color:#666;">6:30 - 13:30</span>
+            </div>
+            <button id="btn-enviar-paes" style="margin-top:10px;width:100%;padding:10px;background:#0f6e56;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;">Registrar inasistencia PAES</button>
+          </div>
+
+          <!-- RETARDO PAES -->
+          <div class="form-group" id="paes-bloque-retardo" style="display:none;margin-top:20px;border-top:1px solid #e0e0e0;padding-top:16px;">
+            <label>Retardo PAES</label>
+            <div style="position:relative;">
+              <input type="text" id="input-paes-ret" name="busqueda-paes-ret-1a2b3c" placeholder="Escribe apellido o nombre" autocomplete="off" style="width:100%;box-sizing:border-box;">
+              <div id="lista-paes-ret" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:0.5px solid #ccc;border-radius:6px;z-index:100;max-height:180px;overflow-y:auto;"></div>
+            </div>
+            <input type="hidden" id="select-paes-ret">
+            <div style="margin-top:8px;background:#f0f0f5;border-radius:6px;padding:8px 12px;font-size:13px;color:#666;display:flex;justify-content:space-between;">
+              <span>Hora programada</span><span style="font-weight:500;color:#333;">6:30 am</span>
+            </div>
+            <label style="font-size:11px;font-weight:500;color:#666;letter-spacing:0.04em;text-transform:uppercase;display:block;margin-top:8px;">Hora real de llegada</label>
+            <input type="time" id="input-hora-llegada-paes" style="width:100%;box-sizing:border-box;margin-top:4px;">
+            <div id="paes-minutos-retardo" style="display:none;margin-top:8px;background:#e6f1fb;border-radius:6px;padding:8px 12px;font-size:13px;color:#185fa5;"></div>
+            <button id="btn-enviar-retardo-paes" style="margin-top:10px;width:100%;padding:10px;background:#185fa5;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;">Registrar retardo PAES</button>
+          </div>
+        </div>
+        <p class="success-msg" id="success-msg"></p>
+      </div>
+
+      <!-- REGISTROS DEL DÍA -->
+      <div class="card">
+        <h3>Registros de hoy</h3>
+        <div id="registros-hoy">
+          <p style="color:#999;font-size:0.85rem;">Sin registros por ahora.</p>
+        </div>
+      </div>
+
+      </div><!-- /seccion-maestros -->
+
+      <div id="seccion-asistencia" style="display:none;">
+        <div class="card">
+          <div id="asistencia-contenido">
+            <p style="color:#999;font-size:0.85rem;">Cargando...</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>

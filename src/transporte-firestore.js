@@ -1,11 +1,14 @@
-// Transporte REAL: habla con el buzón en Firestore (proyecto buzon-cifrado-fcp) por su API REST, sin SDK ni claves de Firebase.
+// Transporte REAL: habla con el buzón en Firestore (el proyecto de Firebase de la escuela) por su API REST, sin SDK ni claves de Firebase.
 // Misma interfaz que transporte.js (publicar, pendientes, confirmar, lista, ponerLista), así el resto de la app no cambia.
 //
 // Estructura (ver firebase/firestore.rules):
 //   /b/{clave}/lista/actual                           lista firmada de aparatos {texto, firma, adminPub}
 //   /b/{clave}/buzones/{kid}/mensajes/{id}            UN documento por mensaje y por aparato destinatario
 // {clave} es una cadena larga al azar que solo conocen las apps autorizadas (NO va en el código ni en el repositorio).
+// Proyecto de Firebase del buzón de ESTA escuela. En la versión local que se vende este valor va VACÍO (cada escuela escribe el suyo en el
+// panel del buzón); aquí, en las pruebas y en la app de consulta propias, apunta al proyecto del director.
 export const PROYECTO_POR_OMISION = "buzon-cifrado-fcp";
+export function proyectoValido(p) { return typeof p === "string" && /^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(p); }
 
 export function generarClaveBuzon() {
   const b = crypto.getRandomValues(new Uint8Array(32));
@@ -20,6 +23,7 @@ export function crearTransporteFirestore(config) {
   const proyecto = config.proyecto || PROYECTO_POR_OMISION;
   const clave = config.clave;
   if (!claveValida(clave)) throw new Error("La clave del buzón no es válida.");
+  if (!proyectoValido(proyecto)) throw new Error("Falta el nombre del proyecto de Firebase del buzón.");
   const RAIZ = "projects/" + proyecto + "/databases/(default)/documents";
   const URL_API = "https://firestore.googleapis.com/v1/";
   const seg = encodeURIComponent;
