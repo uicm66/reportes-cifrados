@@ -95,8 +95,8 @@ export async function firmarPerfil(carga, adminPrivada) {
   const f = await crypto.subtle.sign(FIRMA, adminPrivada, te.encode(textoFirmado(carga)));
   return Object.assign({}, carga, { firma: aB64(new Uint8Array(f)) });
 }
-export async function perfilAutentico(carga, adminPubB64) {
-  if (!carga || !carga.firma || carga.tipo !== TIPO_PERFIL) return false;
+export async function perfilAutentico(carga, adminPubB64, tipoEsperado) {
+  if (!carga || !carga.firma || carga.tipo !== (tipoEsperado || TIPO_PERFIL)) return false;
   try {
     const llave = await crypto.subtle.importKey("raw", deB64(adminPubB64), { name: "ECDSA", namedCurve: "P-256" }, false, ["verify"]);
     return await crypto.subtle.verify(FIRMA, llave, deB64(carga.firma), te.encode(textoFirmado(carga)));

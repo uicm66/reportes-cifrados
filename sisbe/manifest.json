@@ -1,0 +1,15 @@
+{
+  "name": "Programa SISBE",
+  "short_name": "SISBE",
+  "description": "Registro de atención médica del programa SISBE",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#eef5fb",
+  "theme_color": "#A32D2D",
+  "lang": "es",
+  "icons": [
+    { "src": "icono-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icono-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

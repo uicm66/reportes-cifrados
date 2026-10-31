@@ -92,6 +92,29 @@ export async function abrirBoveda(nombre) {
     },
     bloquear: function () { vk = null; privada = null; },
 
+    // Cambia el PIN sin tocar nada de lo guardado: solo se vuelve a envolver la llave de la bóveda con el PIN nuevo.
+    // Pide el PIN actual (aunque la bóveda esté abierta) y cuenta los fallos igual que al desbloquear.
+    cambiarPin: async function (pinActual, pinNuevo) {
+      if (!meta || !vk) throw new Error("Primero abre el buzón con tu PIN.");
+      if (!pinNuevo || pinNuevo.length < 6) throw new Error("El PIN nuevo debe tener al menos 6 caracteres.");
+      const espera = b.esperaRestante();
+      if (espera) throw new Error("Demasiados intentos. Espera " + espera + " s.");
+      let raw;
+      try { raw = await C.descifrarBytes(await C.claveDePassword(pinActual, C.deB64(meta.salt), meta.iter), meta.vk, "vk"); }
+      catch (e) {
+        meta.fallos = (meta.fallos || 0) + 1;
+        const seg = ESPERA_FALLOS[Math.min(meta.fallos, ESPERA_FALLOS.length - 1)];
+        meta.hasta = seg ? Date.now() + seg * 1000 : 0;
+        await escribir("kv", "meta", meta);
+        throw new Error("El PIN actual no es correcto.");
+      }
+      const salt = C.aleatorio(16);
+      const kek = await C.claveDePassword(pinNuevo, salt, C.ITERACIONES);
+      const m = Object.assign({}, meta, { salt: C.aB64(salt), iter: C.ITERACIONES, vk: await C.cifrarBytes(kek, raw, "vk"), fallos: 0, hasta: 0 });
+      await escribir("kv", "meta", m);
+      meta = m;
+    },
+
     // ---- reportes ----
     // Devuelve "nuevo", "actualizado" o "repetido" (ya había uno igual o más reciente).
     guardarRegistro: async function (reg) {

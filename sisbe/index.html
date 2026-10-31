@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#A32D2D">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="SISBE">
+<title>SISBE</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icono-180.png">
+<link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+
+<!-- ACCESO -->
+<div id="login-screen">
+  <div id="login-card">
+    <h1>Programa SISBE</h1>
+    <p class="sub" id="escuela-label">Registro de atención médica</p>
+    <input type="email" id="login-email" placeholder="Correo" autocomplete="username">
+    <input type="password" id="login-pass" placeholder="Contraseña" autocomplete="current-password">
+    <button class="btn" id="login-btn">Entrar</button>
+    <p class="err" id="login-error"></p>
+    <p id="version" style="margin:12px 0 0;font-size:11px;color:#9ca3af"></p>
+  </div>
+</div>
+
+<!-- ALTA (la primera vez en este aparato) -->
+<div id="alta-screen">
+  <div id="alta-card">
+    <h1 id="alta-titulo"></h1>
+    <p id="alta-texto"></p>
+    <button class="btn" id="btn-alta-revisar" style="display:none">Revisar ahora</button>
+    <p class="err" id="alta-error"></p>
+  </div>
+</div>
+
+<!-- ACCESO SUSPENDIDO -->
+<div id="bloqueado-screen">
+  <div id="bloqueado-card">
+    <h1>Acceso suspendido</h1>
+    <p>Tu acceso ha sido desactivado temporalmente.<br>Comunícate con el director.</p>
+  </div>
+</div>
+
+<!-- FORMULARIO (sin historial: lo que se envía ya no se muestra aquí) -->
+<div id="app-screen">
+  <div class="cab">
+    <div>
+      <h1>🩺 Programa SISBE</h1>
+      <div class="sub" id="usuario-label"></div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <span id="pendientes"></span>
+      <button class="btn sec" id="btn-logout">Salir</button>
+    </div>
+  </div>
+
+  <div class="caja">
+    <h2>Registro diario de atención</h2>
+    <div class="ayuda" style="margin-bottom:12px">Al guardar, el registro se envía cifrado a la dirección y ya no se muestra en este aparato.</div>
+    <div class="fila">
+      <div><label class="t">Fecha</label><input type="date" id="f-fecha"></div>
+      <div><label class="t">Hora</label><input type="time" id="f-hora"></div>
+    </div>
+    <div class="fila">
+      <div style="position:relative;grid-column:span 2">
+        <label class="t">Alumno/a (escribe 2 letras para buscar)</label>
+        <input type="search" id="f-buscar" name="sisbe-busca-alumno" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-form-type="other" data-lpignore="true" placeholder="Buscar alumno/a...">
+        <div id="sug"></div>
+        <div id="f-sel-conf" style="display:none;font-size:12px;color:#166534;margin-top:6px;font-weight:700"></div>
+        <div class="ayuda" id="f-manual-ayuda">¿No aparece en la lista? <a href="#" id="f-manual-link" style="color:#185FA5">Escribe el nombre a mano</a>.</div>
+        <div class="ayuda" id="dir-estado" style="font-weight:600"></div>
+      </div>
+    </div>
+    <div class="fila" id="fila-manual" style="display:none">
+      <div style="grid-column:span 2"><label class="t">Nombre completo del alumno/a</label><input type="text" id="f-nombre" autocomplete="off"></div>
+      <div><label class="t">Grado</label>
+        <select id="f-grado"><option value="">—</option><option>1</option><option>2</option><option>3</option></select></div>
+      <div><label class="t">Grupo</label>
+        <select id="f-grupo"><option value="">—</option><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option></select></div>
+    </div>
+    <div class="fila">
+      <div><label class="t">¿Quién lo canalizó?</label>
+        <select id="f-canaliza"><option value="">— Elegir —</option><option>Prefectura</option><option>El propio alumno/a (espontáneo)</option><option>Trabajo Social</option><option>Otro</option></select></div>
+      <div><label class="t">¿Se informó a?</label>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;padding:9px 0">
+          <label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="checkbox" id="f-informo-ts" value="Trabajo Social" style="width:16px;height:16px">Trabajo Social</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="checkbox" id="f-informo-pf" value="Prefectura" style="width:16px;height:16px">Prefectura</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="checkbox" id="f-informo-dir" value="Dirección" style="width:16px;height:16px">Dirección</label>
+        </div>
+      </div>
+      <div><label class="t">¿Se avisó al padre/madre/tutor?</label>
+        <select id="f-aviso"><option value="">— Elegir —</option><option value="si">Sí</option><option value="no">No</option></select></div>
+    </div>
+    <div class="fila"><div style="grid-column:1/-1"><label class="t">Motivo de la consulta</label>
+      <input type="text" id="f-motivo" autocomplete="off" placeholder="Ej. dolor abdominal, cefalea, control"></div></div>
+
+    <div style="font-size:12px;font-weight:700;color:#185FA5;margin:8px 0 8px;text-transform:uppercase;letter-spacing:.02em">Signos vitales (opcionales)</div>
+    <div class="fila signos" style="grid-template-columns:repeat(auto-fit,minmax(90px,1fr))">
+      <div><label class="t">TA</label><input type="text" id="f-ta" autocomplete="off" placeholder="120/78"></div>
+      <div><label class="t">FC</label><input type="text" id="f-fc" autocomplete="off" placeholder="78"></div>
+      <div><label class="t">FR</label><input type="text" id="f-fr" autocomplete="off" placeholder="16"></div>
+      <div><label class="t">Temp (°C)</label><input type="text" id="f-temp" autocomplete="off" placeholder="36.5"></div>
+      <div><label class="t">Peso (kg)</label><input type="text" id="f-peso" autocomplete="off"></div>
+      <div><label class="t">Talla (cm)</label><input type="text" id="f-talla" autocomplete="off"></div>
+    </div>
+
+    <div class="fila">
+      <div><label class="t">Diagnóstico / hallazgo</label>
+        <textarea id="f-diag" placeholder="Ej. síndrome de colon irritable por consumo mixto de alimentos"></textarea></div>
+      <div><label class="t">Conducta / indicación</label>
+        <textarea id="f-conducta" placeholder="Ej. reposo en aula, medicamento entregado, se refiere a valoración clínica"></textarea></div>
+    </div>
+
+    <div class="fila">
+      <div><label class="t">¿Se refiere a unidad médica?</label>
+        <select id="f-refiere"><option value="no">No</option><option value="si">Sí</option></select></div>
+      <div id="f-unidad-caja" style="display:none;grid-column:span 2"><label class="t">Unidad médica a la que se refiere</label>
+        <input type="text" id="f-unidad" autocomplete="off" placeholder="Ej. Centro de Salud"></div>
+    </div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn" id="btn-guardar">Guardar y enviar</button>
+      <button class="btn sec" id="btn-limpiar">Limpiar formulario</button>
+    </div>
+    <div class="msg" id="msg-form"></div>
+  </div>
+</div>
+
+<script type="module" src="src/app.js"></script>
+</body>
+</html>

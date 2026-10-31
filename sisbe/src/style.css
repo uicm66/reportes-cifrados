@@ -1,0 +1,79 @@
+
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background: #eef5fb; color: #1f2937; }
+  #login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  #login-card { background: white; padding: 36px 30px; border-radius: 16px; width: 100%; max-width: 360px; box-shadow: 0 4px 24px rgba(0,0,0,.08); text-align: center; }
+    #login-card h1 { font-size: 18px; margin: 0 0 4px; color: #A32D2D; }
+  #login-card p.sub { color: #78716c; font-size: 12px; margin: 0 0 22px; }
+  input, select, textarea { font-family: inherit; }
+  #login-card input { width: 100%; padding: 10px 12px; border: 1px solid #B5D4F4; border-radius: 8px; font-size: 14px; margin-bottom: 12px; }
+  .btn { padding: 10px 16px; border: none; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; background: #A32D2D; color: white; }
+  .btn:disabled { opacity: .6; cursor: default; }
+  .btn.sec { background: white; color: #185FA5; border: 1px solid #85B7EB; }
+  .btn.pel { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+  #login-card .btn { width: 100%; padding: 11px; font-size: 14px; }
+  .err { color: #9f1239; font-size: 12px; margin: 12px 0 0; display: none; }
+  #app-screen { display: none; max-width: 1100px; margin: 0 auto; padding: 16px 14px 60px; }
+  .cab { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .cab h1 { font-size: 20px; color: #A32D2D; margin: 0; }
+  .cab .sub { font-size: 12px; color: #6b7280; margin-top: 3px; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+  .tab { padding: 9px 16px; border-radius: 10px; border: 1px solid #85B7EB; background: white; color: #185FA5; font-weight: 700; font-size: 13px; cursor: pointer; }
+  .tab.activo { background: #185FA5; color: white; border-color: #185FA5; }
+  .caja { background: white; border: 1px solid #cfe0f3; border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+  .caja h2 { font-size: 14px; margin: 0 0 12px; color: #A32D2D; }
+  .fila { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 12px; }
+  label.t { display: block; font-size: 12px; font-weight: 700; margin-bottom: 4px; color: #374151; }
+  .caja input, .caja select, .caja textarea { width: 100%; padding: 9px 10px; border: 1px solid #c7dbf0; border-radius: 8px; font-size: 14px; background: white; }
+  .caja textarea { min-height: 70px; resize: vertical; }
+  .ayuda { font-size: 11px; color: #78716c; margin-top: 3px; }
+  #sug { position: absolute; left: 0; right: 0; top: 100%; z-index: 30; background: white; border: 1px solid #c7dbf0; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.15); max-height: 260px; overflow-y: auto; display: none; }
+  #sug div { padding: 9px 12px; font-size: 13px; cursor: pointer; border-bottom: 1px solid #eef5fb; }
+  table { border-collapse: collapse; width: 100%; font-size: 12px; }
+  th { background: #185FA5; color: white; padding: 8px; text-align: left; font-size: 11px; }
+  td { padding: 8px; border-bottom: 1px solid #eef1f6; vertical-align: top; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 800; }
+  .b-si { background: #dcfce7; color: #166534; } .b-no { background: #fee2e2; color: #991b1b; } .b-na { background: #f3f4f6; color: #6b7280; }
+  .msg { font-size: 13px; margin-top: 10px; }
+  .solo-movil { display: none; }
+  .agr-btn.activo { background: #185FA5; color: white; border-color: #185FA5; }
+  .grp-cab { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 7px 12px; margin: 14px 0 6px; border-radius: 8px; font-size: 13px; font-weight: 800; }
+  .grp-cab .n { font-size: 12px; font-weight: 700; opacity: .85; }
+  tr.grp-fila td { padding: 0 !important; border: none !important; }
+  .tarj { border: 1px solid #cfe0f3; border-radius: 12px; padding: 12px; margin-bottom: 10px; background: white; }
+  .tarj .top { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: #6b7280; }
+  .tarj .nom { font-size: 15px; font-weight: 800; color: #1f2937; margin: 4px 0 2px; }
+  .tarj .fila-b { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+  .tarj .txt { font-size: 12px; color: #374151; margin-top: 4px; }
+  .tarj .acc { display: flex; gap: 8px; margin-top: 10px; }
+  .tarj .acc .btn { flex: 1; padding: 10px; }
+  html, body { max-width: 100%; overflow-x: hidden; }
+  .fila > * { min-width: 0; }
+  input, select, textarea { max-width: 100%; }
+  .aviso-refiere { margin-top: 8px; }
+  /* iPhone: fecha y hora traen un ancho propio que desborda la pantalla. */
+  input[type="date"], input[type="time"] { -webkit-appearance: none; appearance: none; display: block; min-width: 0; min-height: 40px; text-align: left; }
+  input[type="date"]::-webkit-date-and-time-value, input[type="time"]::-webkit-date-and-time-value { text-align: left; }
+  @media (max-width: 700px) {
+    /* Con letra menor a 16px Safari hace zoom al tocar un campo y la pantalla queda cortada. */
+    .caja input, .caja select, .caja textarea { font-size: 16px; }
+    .fila.signos { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 8px; }
+    .fila { grid-template-columns: minmax(0, 1fr); }
+    .fila > * { grid-column: auto !important; }
+    .oculta-movil { display: none; }
+    .solo-escritorio { display: none; }
+    .solo-movil { display: block; }
+    #app-screen { padding: 12px 10px 60px; }
+    .caja { padding: 12px; }
+    .btn { padding: 12px 14px; }
+  }
+
+  /* Pantallas de alta y de acceso suspendido (la primera vez en este aparato) */
+  #alta-screen, #bloqueado-screen { display: none; min-height: 100vh; align-items: center; justify-content: center; padding: 20px; }
+  #alta-card, #bloqueado-card { background: white; padding: 30px 26px; border-radius: 16px; width: 100%; max-width: 380px; box-shadow: 0 4px 24px rgba(0,0,0,.08); text-align: center; }
+  #alta-card h1, #bloqueado-card h1 { font-size: 18px; margin: 0 0 8px; color: #A32D2D; }
+  #alta-card p, #bloqueado-card p { font-size: 14px; line-height: 1.45; color: #444; margin: 0 0 14px; }
+  #alta-card .btn { width: 100%; padding: 11px; font-size: 14px; }
+  #aviso { position: fixed; left: 10px; right: 10px; bottom: 12px; z-index: 9999; border-radius: 12px; padding: 12px 14px; font-size: 14px; font-weight: 700; box-shadow: 0 6px 24px rgba(0,0,0,.25); text-align: center; max-width: 560px; margin: 0 auto; }
+  #pendientes { font-size: 12px; font-weight: 700; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; border-radius: 999px; padding: 3px 10px; display: none; }
+  #app-screen { display: none; }
