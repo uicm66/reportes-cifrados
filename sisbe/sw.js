@@ -1,6 +1,6 @@
 // Guarda el CÓDIGO de la página de SISBE para que abra sin internet. NUNCA guarda datos: las consultas por enviar y la lista de alumnos
 // viven cifrados en la memoria del celular. Al publicar una versión nueva, subir CACHE (y VERSION_SISBE en src/app.js).
-const CACHE = "sisbe-v1";
+const CACHE = "sisbe-v2";
 const ARCHIVOS = [
   "./", "./index.html", "./manifest.json", "./src/app.js", "./src/style.css", "./src/buzon-sisbe.js",
   "../src/cripto.js", "../src/transporte-firestore.js", "../src/alta-aparato.js", "../src/perfil-prefecto.js", "../src/rol-sisbe.js",

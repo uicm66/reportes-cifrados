@@ -11,7 +11,7 @@
 import * as Buzon from "./buzon-sisbe.js";
 import { reporteDeConsulta } from "../../src/rol-sisbe.js";
 
-const VERSION_SISBE = "sisbe-v1 (2026-10-30)";   // igual que CACHE en sw.js
+const VERSION_SISBE = "sisbe-v2 (2026-10-31)";   // igual que CACHE en sw.js
 if ("serviceWorker" in navigator && (location.protocol === "https:" || new URLSearchParams(location.search).get("sw") === "1")) {
   navigator.serviceWorker.register("sw.js").catch(function () { /* sin modo sin conexión */ });
 }
@@ -219,6 +219,8 @@ $("btn-guardar").addEventListener("click", async function () {
   await decidir();
   if (av && Buzon.estadoPantalla() !== "listo") { $("alta-error").textContent = av; $("alta-error").style.display = "block"; }
   ciclo(false);
-  setInterval(function () { ciclo(false); }, 30000);
+  let enCiclo = false;      // cada 5 s y solo con la pantalla a la vista; una vuelta lenta no se encima con la siguiente
+  setInterval(async function () { if (document.hidden || enCiclo) return; enCiclo = true; try { await ciclo(false); } finally { enCiclo = false; } }, 5000);
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) ciclo(false); });
   window.addEventListener("online", function () { ciclo(false); });
 })();

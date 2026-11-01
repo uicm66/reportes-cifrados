@@ -83,7 +83,7 @@ const HORAS_PROGRAMADAS = ['07:00', '07:50', '08:40', '09:30', '10:40', '11:30',
 let retardosEnCurso = {}; // { '07:00': { llegada: '07:13', grupo: '1A' } } - solo horas con llegada tienen entrada
 
 // Modo sin conexión: se guarda el código de la página (nunca datos). Solo en https, o con ?sw=1 para probar en la computadora.
-const VERSION_PREFECTOS = "prefectos-v4 (2026-10-30)";   // igual que CACHE en sw.js
+const VERSION_PREFECTOS = "prefectos-v5 (2026-10-31)";   // igual que CACHE en sw.js
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || new URLSearchParams(location.search).get('sw') === '1')) {
   navigator.serviceWorker.register('sw.js').catch(function () { /* sin modo sin conexión */ });
 }
@@ -214,7 +214,9 @@ document.getElementById('btn-alta-revisar').addEventListener('click', () => { do
   await _pfDecidir();
   if (aviso && Buzon.estadoPantalla() !== 'listo') document.getElementById('alta-error').textContent = aviso;
   _pfCiclo(false);
-  setInterval(function () { _pfCiclo(false); }, 30000);
+  let enCiclo = false;      // cada 5 s y solo con la pantalla a la vista; una vuelta lenta no se encima con la siguiente
+  setInterval(async function () { if (document.hidden || enCiclo) return; enCiclo = true; try { await _pfCiclo(false); } finally { enCiclo = false; } }, 5000);
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) _pfCiclo(false); });
   window.addEventListener('online', function () { _pfCiclo(false); });
 })();
 
