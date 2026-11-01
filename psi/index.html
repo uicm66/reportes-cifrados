@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#6d28d9">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Psicología">
+<title>Psicología</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icono-180.png">
+<link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+
+<!-- ACCESO -->
+<div id="login-screen">
+  <div id="login-card">
+    <h1>Psicología</h1>
+    <p class="sub" id="escuela-label">Bitácora de atención</p>
+    <input type="email" id="login-email" placeholder="Correo" autocomplete="username">
+    <input type="password" id="login-pass" placeholder="Contraseña" autocomplete="current-password">
+    <button class="btn" id="login-btn">Entrar</button>
+    <p class="err" id="login-error"></p>
+    <p id="version" style="margin:12px 0 0;font-size:11px;color:#9ca3af"></p>
+  </div>
+</div>
+
+<!-- ALTA (la primera vez en este aparato) -->
+<div id="alta-screen">
+  <div id="alta-card">
+    <h1 id="alta-titulo"></h1>
+    <p id="alta-texto"></p>
+    <button class="btn" id="btn-alta-revisar" style="display:none">Revisar ahora</button>
+    <p class="err" id="alta-error"></p>
+  </div>
+</div>
+
+<!-- ACCESO SUSPENDIDO -->
+<div id="bloqueado-screen">
+  <div id="bloqueado-card">
+    <h1>Acceso suspendido</h1>
+    <p>Tu acceso ha sido desactivado temporalmente.<br>Comunícate con el director.</p>
+  </div>
+</div>
+
+<!-- PIN (abre el historial guardado en este aparato) -->
+<div id="pin-screen">
+  <div id="pin-card">
+    <h1 id="pin-titulo"></h1>
+    <p id="pin-texto"></p>
+    <input type="password" id="pin-1" autocomplete="off" placeholder="PIN">
+    <input type="password" id="pin-2" autocomplete="off" placeholder="Repite el PIN" style="display:none">
+    <button class="btn" id="pin-btn">Continuar</button>
+    <p class="err" id="pin-error"></p>
+    <p style="margin:14px 0 0;font-size:11px;color:#78716c" id="pin-ayuda"></p>
+    <button class="btn sec" id="pin-salir" style="width:100%;margin-top:12px">Salir</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-screen">
+  <div class="cab">
+    <div>
+      <h1>🧠 Bitácora de Psicología</h1>
+      <div class="sub" id="usuario-label"></div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <span id="pendientes"></span>
+      <button class="btn sec" id="btn-bloquear">🔒 Bloquear</button>
+      <button class="btn sec" id="btn-logout">Salir</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab activo" data-tab="nuevo" id="tab-nuevo">＋ Nuevo registro</button>
+    <button class="tab" data-tab="lista" id="tab-lista">📒 Bitácora</button>
+  </div>
+
+  <!-- Nuevo / editar registro -->
+  <div id="t-nuevo">
+    <div class="caja">
+      <h2 id="titulo-form">Registro diario de atención</h2>
+      <div class="fila">
+        <div><label class="t">Fecha</label><input type="date" id="f-fecha"></div>
+        <div><label class="t">Expediente del alumno/a</label>
+          <select id="f-exp"><option value="">— Elegir —</option><option value="ya">Ya tenía expediente</option><option value="abierto">Se le abrió expediente</option><option value="no">No se ha abierto expediente</option></select></div>
+        <div><label class="t">Canalización del alumno/a</label>
+          <select id="f-canaliza"><option value="">— Elegir —</option><option value="si">Canalizado</option><option value="por">Por canalizar</option><option value="no">No canalizado</option></select></div>
+      </div>
+      <div class="fila" id="fila-extra" style="display:none">
+        <div id="f-expnum-caja" style="display:none"><label class="t">Número de expediente</label><input type="text" id="f-expnum" autocomplete="off" placeholder="Ej. 012" maxlength="40"></div>
+        <div id="f-canaldest-caja" style="display:none"><label class="t">¿A dónde o con quién se canaliza / se canalizó?</label><input type="text" id="f-canaldest" autocomplete="off" placeholder="Institución, especialista o servicio" maxlength="200"></div>
+      </div>
+      <div class="fila">
+        <div style="position:relative;grid-column:span 2">
+          <label class="t">Alumno/a (escribe 2 letras para buscar)</label>
+          <input type="search" id="f-buscar" name="psi-busca-alumno" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-form-type="other" data-lpignore="true" placeholder="Buscar alumno/a...">
+          <div id="sug"></div>
+          <div class="ayuda">Si no aparece en la lista, escribe el nombre completo a mano abajo.</div>
+          <div class="ayuda" id="dir-estado" style="font-weight:600"></div>
+          <div id="f-resumen-alumno" style="display:none;margin-top:6px;padding:7px 10px;border-radius:8px;font-size:12.5px;font-weight:600;background:#f5f3ff;color:#5b21b6"></div>
+        </div>
+      </div>
+      <div class="fila">
+        <div style="grid-column:span 2"><label class="t">Nombre completo del alumno/a</label><input type="text" id="f-nombre" autocomplete="off" maxlength="120"></div>
+        <div><label class="t">Grado</label>
+          <select id="f-grado"><option value="">—</option><option>1</option><option>2</option><option>3</option></select></div>
+        <div><label class="t">Grupo</label>
+          <select id="f-grupo"><option value="">—</option><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option></select></div>
+        <div><label class="t">Sexo</label>
+          <select id="f-sexo"><option value="">—</option><option value="H">Hombre</option><option value="M">Mujer</option></select></div>
+      </div>
+      <div class="fila">
+        <div><label class="t">¿Dónde llegó el reporte por primera vez?</label>
+          <select id="f-primero"></select>
+          <div class="ayuda">Primer contacto con el caso (para saber a quién corresponde su permiso).</div></div>
+        <div><label class="t">Quién lo envió a Psicología</label>
+          <select id="f-canal"></select></div>
+        <div><label class="t">Tipo de motivo</label>
+          <select id="f-tipomot"></select>
+          <div id="f-tipomot-otro-caja" style="display:none;margin-top:6px"><input type="text" id="f-tipomot-otro" autocomplete="off" placeholder="¿Cuál? Especifica el motivo" maxlength="120"></div></div>
+      </div>
+      <div class="fila"><div style="grid-column:1/-1"><label class="t">Motivo de la intervención</label>
+        <textarea id="f-motivo" maxlength="3000" placeholder="Motivo manifiesto: conductual, emocional, académico..."></textarea></div></div>
+      <div class="fila"><div style="grid-column:1/-1"><label class="t">Descripción de conductas observables</label>
+        <textarea id="f-desc" maxlength="3000" placeholder="Hechos concretos y objetivos, sin juicios de valor (evita términos como “se portó mal”)."></textarea></div></div>
+      <div class="fila"><div style="grid-column:1/-1"><label class="t">Acciones / estrategias implementadas</label>
+        <textarea id="f-acciones" maxlength="3000"></textarea></div></div>
+      <div class="fila"><div style="grid-column:1/-1"><label class="t">Acuerdos y seguimiento</label>
+        <textarea id="f-acuerdos" maxlength="3000"></textarea></div></div>
+      <div class="fila">
+        <div><label class="t">Autorización por escrito firmada por el padre/madre/tutor</label>
+          <select id="f-auth"><option value="">— Elegir —</option><option value="si">Sí, ya la entregó firmada</option><option value="no">No la ha entregado</option><option value="na">No aplica</option></select></div>
+        <div><label class="t">Fecha de la autorización</label><input type="date" id="f-authfecha"></div>
+        <div><label class="t">Nombre de quien firmó (padre/madre/tutor)</label><input type="text" id="f-authnombre" autocomplete="off" maxlength="120"></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" id="btn-guardar">Guardar y enviar</button>
+        <button class="btn sec" id="btn-limpiar">Limpiar formulario</button>
+      </div>
+      <div class="msg" id="msg-form"></div>
+    </div>
+  </div>
+
+  <!-- Bitácora -->
+  <div id="t-lista" style="display:none">
+    <div class="caja">
+      <div class="fila" style="align-items:end">
+        <div><label class="t">Desde</label><input type="date" id="l-desde"></div>
+        <div><label class="t">Hasta</label><input type="date" id="l-hasta"></div>
+        <div><label class="t">Buscar alumno/a</label><input type="search" id="l-texto" name="psi-lista-buscar" autocomplete="off" placeholder="Nombre, grupo o folio"></div>
+        <div><label class="t">Tipo de motivo</label><select id="l-tipo"></select></div>
+      </div>
+      <div class="barra" style="margin:0">
+        <button class="btn sec" id="l-hoy">Hoy</button>
+        <button class="btn sec" id="l-mes">Este mes</button>
+        <button class="btn sec" id="l-todo">Todo</button>
+        <label style="font-size:12px;display:flex;align-items:center;gap:5px"><input type="checkbox" id="l-quitados" style="width:auto"> Ver quitados</label>
+        <button class="btn sec no-imprimir" id="l-imprimir">⬇ Imprimir</button>
+      </div>
+      <div class="ayuda" id="l-conteo"></div>
+    </div>
+    <div class="caja" id="l-resumen" style="display:none"></div>
+    <div id="l-lista"></div>
+  </div>
+</div>
+
+<script type="module" src="src/app.js"></script>
+</body>
+</html>
