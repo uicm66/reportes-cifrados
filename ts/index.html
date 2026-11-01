@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f766e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Trabajo Social">
+<title>Trabajo Social</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icono-180.png">
+<link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+
+<!-- ACCESO -->
+<div id="login-screen">
+  <div id="login-card">
+    <h1>Trabajo Social</h1>
+    <p class="sub" id="escuela-label">Reportes e intervenciones</p>
+    <input type="email" id="login-email" placeholder="Correo" autocomplete="username">
+    <input type="password" id="login-pass" placeholder="Contraseña" autocomplete="current-password">
+    <button class="btn" id="login-btn">Entrar</button>
+    <p class="err" id="login-error"></p>
+    <p id="version" style="margin:12px 0 0;font-size:11px;color:#9ca3af"></p>
+  </div>
+</div>
+
+<!-- ALTA (la primera vez en este aparato) -->
+<div id="alta-screen">
+  <div id="alta-card">
+    <h1 id="alta-titulo"></h1>
+    <p id="alta-texto"></p>
+    <button class="btn" id="btn-alta-revisar" style="display:none">Revisar ahora</button>
+    <p class="err" id="alta-error"></p>
+  </div>
+</div>
+
+<!-- ACCESO SUSPENDIDO -->
+<div id="bloqueado-screen">
+  <div id="bloqueado-card">
+    <h1>Acceso suspendido</h1>
+    <p>Tu acceso ha sido desactivado temporalmente.<br>Comunícate con el director.</p>
+  </div>
+</div>
+
+<!-- PIN (abre el historial guardado en este aparato) -->
+<div id="pin-screen">
+  <div id="pin-card">
+    <h1 id="pin-titulo"></h1>
+    <p id="pin-texto"></p>
+    <input type="password" id="pin-1" autocomplete="off" placeholder="PIN">
+    <input type="password" id="pin-2" autocomplete="off" placeholder="Repite el PIN" style="display:none">
+    <button class="btn" id="pin-btn">Continuar</button>
+    <p class="err" id="pin-error"></p>
+    <p style="margin:14px 0 0;font-size:11px;color:#78716c" id="pin-ayuda"></p>
+    <button class="btn sec" id="pin-salir" style="width:100%;margin-top:12px">Salir</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-screen">
+  <div class="cab">
+    <div>
+      <h1>🤝 Trabajo Social</h1>
+      <div class="sub" id="usuario-label"></div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <span id="pendientes"></span>
+      <button class="btn sec" id="btn-bloquear">🔒 Bloquear</button>
+      <button class="btn sec" id="btn-logout">Salir</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab activo" data-tab="alumno">🔍 Buscar alumno</button>
+    <button class="tab" data-tab="periodo">📅 Reportes</button>
+    <button class="tab" data-tab="proceso">⏳ En proceso <span id="n-proceso"></span></button>
+  </div>
+
+  <!-- Buscar alumno / expediente -->
+  <div id="t-alumno">
+    <div class="caja">
+      <div style="position:relative">
+        <label class="t">Alumno/a (escribe 2 letras para buscar)</label>
+        <input type="search" id="a-buscar" name="ts-busca-alumno" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-form-type="other" data-lpignore="true" placeholder="Buscar alumno/a...">
+        <div id="sug"></div>
+        <div class="ayuda" id="dir-estado" style="font-weight:600"></div>
+      </div>
+    </div>
+    <div class="caja" id="expediente" style="display:none"></div>
+  </div>
+
+  <!-- Reportes por periodo -->
+  <div id="t-periodo" style="display:none">
+    <div class="caja">
+      <div class="barra">
+        <select id="p-modo" style="max-width:220px">
+          <option value="dia">Un día</option>
+          <option value="semana">Últimos 7 días</option>
+          <option value="mes">Este mes</option>
+          <option value="todo">Todo el historial</option>
+        </select>
+        <input type="date" id="p-fecha" style="max-width:190px">
+        <button class="btn sec no-imprimir" id="p-imprimir">⬇ Imprimir</button>
+      </div>
+      <div id="p-lista"></div>
+    </div>
+  </div>
+
+  <!-- En proceso -->
+  <div id="t-proceso" style="display:none">
+    <div class="caja">
+      <div class="ayuda" style="margin-bottom:10px">Intervenciones que siguen «En proceso» (lo más antiguo primero).</div>
+      <div id="x-lista"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Nueva / editar intervención -->
+<div id="modal">
+  <div id="modal-card">
+    <h2 id="m-titulo"></h2>
+    <div id="m-alumno" style="font-size:13px;font-weight:700;margin-bottom:10px"></div>
+    <div class="fila">
+      <div><label class="t">Tipo de intervención</label><select id="m-tipo"></select></div>
+      <div><label class="t">Estado</label><select id="m-estado"></select></div>
+    </div>
+    <div class="fila">
+      <div><label class="t">Fecha</label><input type="date" id="m-fecha"></div>
+      <div><label class="t">Hora</label><input type="time" id="m-hora"></div>
+    </div>
+    <div class="fila"><div style="grid-column:1/-1"><label class="t">Asunto *</label><input type="text" id="m-asunto" autocomplete="off" maxlength="200"></div></div>
+    <div class="fila"><div style="grid-column:1/-1"><label class="t">Descripción</label><textarea id="m-descripcion" maxlength="3000"></textarea></div></div>
+    <div class="fila"><div style="grid-column:1/-1"><label class="t">Acuerdos</label><textarea id="m-acuerdos" maxlength="2000"></textarea></div></div>
+    <div class="fila"><div style="grid-column:1/-1">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;cursor:pointer"><input type="checkbox" id="m-carta" style="width:18px;height:18px">Se firmó carta compromiso</label>
+    </div></div>
+    <div id="m-fotos-caja">
+      <label class="t">Fotos (máximo 4; se reducen solas)</label>
+      <input type="file" id="m-archivo" accept="image/*" multiple>
+      <div class="fotos" id="m-fotos"></div>
+    </div>
+    <div class="fotos fotos-ver" id="m-fotos-ver"></div>
+    <div id="m-anulado" style="display:none;margin-top:10px;font-size:13px;font-weight:700;color:#991b1b"></div>
+    <div class="msg" id="m-msg"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+      <button class="btn" id="m-guardar">Guardar y enviar</button>
+      <button class="btn pel" id="m-anular" style="display:none">Anular</button>
+      <button class="btn sec" id="m-cerrar">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="src/app.js"></script>
+</body>
+</html>
