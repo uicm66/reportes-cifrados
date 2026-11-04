@@ -1,9 +1,9 @@
 // Guarda el CÓDIGO de la página de Psicología para que abra sin internet. NUNCA guarda datos: las consultas por enviar y la lista de alumnos
 // viven cifrados en la memoria del celular. Al publicar una versión nueva, subir CACHE (y VERSION_PSI en src/app.js).
-const CACHE = "psi-v1";
+const CACHE = "psi-v2";
 const ARCHIVOS = [
   "./", "./index.html", "./manifest.json", "./src/app.js", "./src/style.css", "./src/buzon-psi.js",
-  "../src/cripto.js", "../src/transporte-firestore.js", "../src/alta-aparato.js", "../src/perfil-prefecto.js", "../src/rol-psicologia.js",
+  "../src/cripto.js", "../src/transporte-firestore.js", "../src/alta-aparato.js", "../src/perfil-prefecto.js", "../src/aviso.js", "../src/rol-psicologia.js",
   "./icono-180.png", "./icono-192.png", "./icono-512.png"
 ];
 self.addEventListener("install", function (e) {

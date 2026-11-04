@@ -13,7 +13,7 @@
 import * as Buzon from "./buzon-psi.js";
 import { reporteDeRegistroPsi, PRIMER_CONTACTO, CANALIZADO_POR, TIPOS_MOTIVO, TIPOS_ANTERIORES } from "../../src/rol-psicologia.js";
 
-const VERSION_PSI = "psi-v1 (2026-10-31)";   // igual que CACHE en sw.js
+const VERSION_PSI = "psi-v2 (2026-11-03)";   // igual que CACHE en sw.js
 if ("serviceWorker" in navigator && (location.protocol === "https:" || new URLSearchParams(location.search).get("sw") === "1")) {
   navigator.serviceWorker.register("sw.js").catch(function () { /* sin modo sin conexión */ });
 }

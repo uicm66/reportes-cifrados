@@ -1,9 +1,9 @@
 // Guarda el CÓDIGO de la página de prefectos para que abra sin internet. NUNCA guarda datos: los reportes y la lista de maestros
 // viven cifrados en la memoria del celular. Al publicar una versión nueva, subir CACHE (y VERSION_PREFECTOS en src/app.js).
-const CACHE = "prefectos-v5";
+const CACHE = "prefectos-v6";
 const ARCHIVOS = [
   "./", "./index.html", "./manifest.json", "./src/app.js", "./src/style.css", "./src/buzon-prefecto.js", "./src/local-db/motorLocal.js",
-  "../src/cripto.js", "../src/transporte-firestore.js", "../src/alta-aparato.js", "../src/perfil-prefecto.js", "../src/reporte-prefectos.js",
+  "../src/cripto.js", "../src/transporte-firestore.js", "../src/alta-aparato.js", "../src/perfil-prefecto.js", "../src/aviso.js", "../src/reporte-prefectos.js",
   "./icono-180.png", "./icono-192.png", "./icono-512.png"
 ];
 self.addEventListener("install", function (e) {

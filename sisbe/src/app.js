@@ -11,7 +11,7 @@
 import * as Buzon from "./buzon-sisbe.js";
 import { reporteDeConsulta } from "../../src/rol-sisbe.js";
 
-const VERSION_SISBE = "sisbe-v2 (2026-10-31)";   // igual que CACHE en sw.js
+const VERSION_SISBE = "sisbe-v3 (2026-11-03)";   // igual que CACHE en sw.js
 if ("serviceWorker" in navigator && (location.protocol === "https:" || new URLSearchParams(location.search).get("sw") === "1")) {
   navigator.serviceWorker.register("sw.js").catch(function () { /* sin modo sin conexión */ });
 }

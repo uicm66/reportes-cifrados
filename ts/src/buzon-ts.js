@@ -11,6 +11,7 @@ import * as C from "../../src/cripto.js";
 import { crearTransporteFirestore } from "../../src/transporte-firestore.js";
 import { decodificarConfig, crearSolicitudAlta, destinatariosDeDireccion } from "../../src/alta-aparato.js";
 import { puedeEntrar, perfilAutentico } from "../../src/perfil-prefecto.js";
+import { TIPO_AJUSTES, aplicarAjustes, enviarAviso } from "../../src/aviso.js";
 import { aplicarPerfilTS, TIPO_PERFIL_TS, TIPO_RESPALDO_TS, aplicarHistorialTS, guardarEnHistorialTS } from "../../src/rol-trabajo-social.js";
 
 const DB_NOMBRE = "ts-buzon";
@@ -162,6 +163,7 @@ export function vaciarSalida() {
         total += r.enviados;
         if (!r.nuevas || r.resto) break;
       }
+      if (total > 0) { try { const av = await leerCif("aviso"); if (av && av.tema) enviarAviso(av.tema, { texto: "Llegó un reporte de Trabajo Social" }); } catch (e) { /* el aviso nunca detiene el envío */ } }
       return { enviados: total, pendientes: ((await leerCif("salida")) || []).length, error: r.error };
     } finally { _vaciando = null; }
   })();
@@ -280,6 +282,10 @@ export async function sincronizar() {
             const r = aplicarPerfilTS(_estado, carga);
             if (r.cambio) { _estado = r.estado; await guardarCif("estado", _estado); perfilNuevo = true; }
           }
+        }
+        if (carga.tipo === TIPO_AJUSTES && (await perfilAutentico(carga, _cfg.adminPub, TIPO_AJUSTES))) {      // el tema del aviso solo vale si lo firma la dirección
+          const ra = aplicarAjustes((await leerCif("aviso")) || null, carga);
+          if (ra.cambio) await guardarCif("aviso", ra.estado);
         }
         await t.confirmar(env.id, d.kid);
       } catch (e) { /* un mensaje que no se pudo abrir no detiene a los demás */ }
