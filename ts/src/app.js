@@ -13,7 +13,7 @@
 import * as Buzon from "./buzon-ts.js";
 import { reporteDeIntervencionTS, TIPOS_INTERVENCION, ESTADOS_INTERVENCION } from "../../src/rol-trabajo-social.js";
 
-const VERSION_TS = "ts-v4 (2026-11-06)";   // igual que CACHE en sw.js
+const VERSION_TS = "ts-v5 (2026-11-06)";   // igual que CACHE en sw.js
 if ("serviceWorker" in navigator && (location.protocol === "https:" || new URLSearchParams(location.search).get("sw") === "1")) {
   navigator.serviceWorker.register("sw.js").catch(function () { /* sin modo sin conexión */ });
 }
@@ -268,6 +268,7 @@ function tarjeta(item, conAlumno) {
     el("span", { text: fechaBonita(r.fecha) + (r.hora ? " · " + r.hora : "") + " · " + r.tipoIntervencion }),
     el("span", {}, [
       r.anulado ? el("span", { class: "chip anul", text: "ANULADA" }) : el("span", { class: "chip " + claseEstado(r.estado), text: r.estado }),
+      r.papel && !r.anulado ? el("span", { class: "chip", text: r.papel === "reportado" ? "🌸 Es reportado" : "🟡 Reporta", style: "margin-left:4px;background:" + (r.papel === "reportado" ? "#fce7f3;color:#9d174d" : "#fef9c3;color:#854d0e") }) : null,
       r.cartaCompromiso && !r.anulado ? el("span", { class: "chip carta", text: " 📄 Carta compromiso", style: "margin-left:4px" }) : null,
       r.citaFecha && !r.anulado ? el("span", { class: "chip cita", text: "📌 Cita " + fechaBonita(r.citaFecha) + (r.citaHora ? " · " + r.citaHora : ""), style: "margin-left:4px" }) : null
     ])
@@ -440,12 +441,13 @@ function abrirModal(alumno, item) {
   $("m-hora").value = r ? r.hora : horaAhora();
   $("m-asunto").value = r ? r.asunto : ""; $("m-descripcion").value = r ? r.descripcion : ""; $("m-acuerdos").value = r ? r.acuerdos : "";
   $("m-carta").checked = !!(r && r.cartaCompromiso);
+  $("m-papel").value = (r && r.papel) || "";
   const hayCita = !!(r && r.citaFecha);
   $("m-cita").checked = hayCita; $("m-cita-caja").style.display = hayCita ? "block" : "none";
   $("m-cita-fecha").value = hayCita ? r.citaFecha : ""; $("m-cita-hora").value = hayCita ? (r.citaHora || "") : ""; $("m-cita-persona").value = hayCita ? (r.citaPersona || "") : "";
   modalFotos = r ? r.fotos.slice() : [];
   $("m-archivo").value = "";
-  ["m-tipo", "m-estado", "m-fecha", "m-hora", "m-asunto", "m-descripcion", "m-acuerdos", "m-carta", "m-cita", "m-cita-fecha", "m-cita-hora", "m-cita-persona", "m-archivo"].forEach(function (i) { $(i).disabled = anulada; });
+  ["m-tipo", "m-estado", "m-fecha", "m-hora", "m-asunto", "m-papel", "m-descripcion", "m-acuerdos", "m-carta", "m-cita", "m-cita-fecha", "m-cita-hora", "m-cita-persona", "m-archivo"].forEach(function (i) { $(i).disabled = anulada; });
   $("m-fotos-caja").style.display = anulada ? "none" : "block";
   $("m-guardar").style.display = anulada ? "none" : "";
   $("m-anular").style.display = item && !anulada ? "" : "none";
@@ -498,7 +500,7 @@ function datosModal(extra) {
     aid: a.aid, alumnoNombre: a.nombre, grado: a.grado, grupo: a.grupo,
     tipoIntervencion: $("m-tipo").value, estado: $("m-estado").value, fecha: $("m-fecha").value, hora: $("m-hora").value,
     asunto: $("m-asunto").value, descripcion: $("m-descripcion").value, acuerdos: $("m-acuerdos").value,
-    cartaCompromiso: $("m-carta").checked, fotos: modalFotos, anulado: false, motivoAnulacion: "",
+    papel: $("m-papel").value, cartaCompromiso: $("m-carta").checked, fotos: modalFotos, anulado: false, motivoAnulacion: "",
     citaFecha: $("m-cita").checked ? $("m-cita-fecha").value : "", citaHora: $("m-cita").checked ? $("m-cita-hora").value : "", citaPersona: $("m-cita").checked ? $("m-cita-persona").value : ""
   }, extra || {});
 }

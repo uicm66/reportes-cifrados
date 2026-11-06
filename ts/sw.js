@@ -1,6 +1,6 @@
 // Guarda el CÓDIGO de la página de Trabajo Social para que abra sin internet. NUNCA guarda datos: las consultas por enviar y la lista de alumnos
 // viven cifrados en la memoria del celular. Al publicar una versión nueva, subir CACHE (y VERSION_TS en src/app.js).
-const CACHE = "ts-v4";
+const CACHE = "ts-v5";
 const ARCHIVOS = [
   "./", "./index.html", "./manifest.json", "./src/app.js", "./src/style.css", "./src/buzon-ts.js",
   "../src/cripto.js", "../src/transporte-firestore.js", "../src/alta-aparato.js", "../src/perfil-prefecto.js", "../src/aviso.js", "../src/rol-trabajo-social.js",

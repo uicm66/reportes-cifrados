@@ -88,6 +88,8 @@ export function limpiarRegistroTS(d) {
     cartaCompromiso: !!d.cartaCompromiso,
     estado: ESTADOS_INTERVENCION.includes(d.estado) ? d.estado : "En proceso",
     fecha: d.fecha, hora: /^\d{2}:\d{2}$/.test(d.hora || "") ? d.hora : "",
+    // Papel del alumno en el reporte (2026-11-06): "reportado" = se le acusa, "reporta" = él acusa, "" = sin indicar.
+    papel: d.papel === "reportado" || d.papel === "reporta" ? d.papel : "",
     // Citatorio a padres/tutor (2026-11-06): solo si trae fecha válida; sin ella se ignoran los otros dos campos.
     citaFecha: esFecha(d.citaFecha) ? d.citaFecha : "",
     citaHora: esFecha(d.citaFecha) && /^\d{2}:\d{2}$/.test(d.citaHora || "") ? d.citaHora : "",
