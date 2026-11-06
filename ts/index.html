@@ -72,10 +72,12 @@
     </div>
   </div>
 
+  <div id="alerta-envio" role="alert"></div>
   <div class="tabs">
     <button class="tab activo" data-tab="alumno">🔍 Buscar alumno</button>
     <button class="tab" data-tab="periodo">📅 Reportes</button>
     <button class="tab" data-tab="proceso">⏳ En proceso <span id="n-proceso"></span></button>
+    <button class="tab" data-tab="citas">📌 Citatorios <span id="n-citas"></span></button>
   </div>
 
   <!-- Buscar alumno / expediente -->
@@ -109,6 +111,17 @@
   </div>
 
   <!-- En proceso -->
+  <div id="t-citas" style="display:none">
+    <div class="caja">
+      <div class="ayuda" style="margin-bottom:10px">Padres, madres o tutores citados (de hoy en adelante, por día). Toca uno para verlo o corregirlo.</div>
+      <div style="position:relative;margin-bottom:12px">
+        <label class="t">➕ Nuevo citatorio: escribe 2 letras del alumno/a</label>
+        <input type="search" id="c-buscar" name="ts-cita-alumno" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-form-type="other" data-lpignore="true" placeholder="Buscar alumno/a para citar a sus padres...">
+        <div id="c-sug" class="sug-flot"></div>
+      </div>
+      <div id="c-lista"></div>
+    </div>
+  </div>
   <div id="t-proceso" style="display:none">
     <div class="caja">
       <div class="ayuda" style="margin-bottom:10px">Intervenciones que siguen «En proceso» (lo más antiguo primero).</div>
@@ -135,6 +148,16 @@
     <div class="fila"><div style="grid-column:1/-1"><label class="t">Acuerdos</label><textarea id="m-acuerdos" maxlength="2000"></textarea></div></div>
     <div class="fila"><div style="grid-column:1/-1">
       <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;cursor:pointer"><input type="checkbox" id="m-carta" style="width:18px;height:18px">Se firmó carta compromiso</label>
+    </div></div>
+    <div class="fila"><div style="grid-column:1/-1;border:1px solid #fcd34d;background:#fffbeb;border-radius:10px;padding:10px 12px">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;cursor:pointer;color:#92400e"><input type="checkbox" id="m-cita" style="width:18px;height:18px">📌 Se cita a padre, madre o tutor</label>
+      <div id="m-cita-caja" style="display:none;margin-top:10px">
+        <div class="fila">
+          <div><label class="t">Día de la cita</label><input type="date" id="m-cita-fecha"></div>
+          <div><label class="t">Hora</label><input type="time" id="m-cita-hora"></div>
+        </div>
+        <div class="fila"><div style="grid-column:1/-1"><label class="t">¿A quién se cita? (opcional)</label><input type="text" id="m-cita-persona" autocomplete="off" maxlength="120" placeholder="Ej. Madre: Sra. Pérez"></div></div>
+      </div>
     </div></div>
     <div id="m-fotos-caja">
       <label class="t">Fotos (máximo 4; se reducen solas)</label>

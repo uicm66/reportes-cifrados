@@ -12,7 +12,7 @@ import { crearTransporteFirestore } from "../../src/transporte-firestore.js";
 import { decodificarConfig, crearSolicitudAlta, destinatariosDeDireccion } from "../../src/alta-aparato.js";
 import { puedeEntrar, perfilAutentico } from "../../src/perfil-prefecto.js";
 import { TIPO_AJUSTES, aplicarAjustes, enviarAviso } from "../../src/aviso.js";
-import { aplicarPerfilTS, TIPO_PERFIL_TS, TIPO_RESPALDO_TS, aplicarHistorialTS, guardarEnHistorialTS } from "../../src/rol-trabajo-social.js";
+import { aplicarPerfilTS, TIPO_PERFIL_TS, TIPO_RESPALDO_TS, TIPO_ACUSE_TS, aplicarAcuseTS, aplicarHistorialTS, guardarEnHistorialTS } from "../../src/rol-trabajo-social.js";
 
 const DB_NOMBRE = "ts-buzon";
 const ESPERA_FALLOS = [0, 0, 0, 0, 0, 30, 60, 300, 900, 3600];   // segundos de espera tras el fallo n del PIN
@@ -178,6 +178,15 @@ export async function encolar(carga) {
   return vaciarSalida();
 }
 export async function pendientesDeEnviar() { return ((await leerCif("salida")) || []).length; }
+// ids de los reportes que todavía NO se entregaron (siguen en la cola de salida): sirven para marcar cada tarjeta «por entregar» o «entregado».
+// Acuses de recibo de la dirección: { acuses: { idReporte: revRecibida }, desde } — `desde` es cuándo empezó este aparato a recibir acuses:
+// lo anterior se da por entregado (nunca hubo acuse para eso).
+export async function estadoAcuses() {
+  let desde = await leerCif("acusesDesde");
+  if (!desde) { desde = Date.now(); await guardarCif("acusesDesde", desde); }
+  return { acuses: (await leerCif("acuses")) || {}, desde: desde };
+}
+export async function idsPendientes() { return ((await leerCif("salida")) || []).map(function (c) { return c && c.datos && c.datos.id; }).filter(Boolean); }
 
 
 // ---------- historial (cifrado con la llave de la bóveda; la bóveda se abre con el PIN) ----------
@@ -266,7 +275,7 @@ export async function sincronizar() {
   if (!_cfg) return { estado: "sin-enlace" };
   const t = crearTransporteFirestore({ clave: _cfg.clave, proyecto: _cfg.proyecto });
   const d = await dispositivo();
-  let perfilNuevo = false, historialNuevo = false, historialPendiente = false, conexion = true, error = "";
+  let perfilNuevo = false, historialNuevo = false, historialPendiente = false, conexion = true, error = "", recibidos = 0;
   try {
     if (!(_estado && _estado.perfil)) { try { await enviarSolicitud(t); } catch (e) { error = e.message; } }
     for (const env of await t.pendientes(d.kid)) {
@@ -283,6 +292,11 @@ export async function sincronizar() {
             if (r.cambio) { _estado = r.estado; await guardarCif("estado", _estado); perfilNuevo = true; }
           }
         }
+        if (carga.tipo === TIPO_ACUSE_TS && (await perfilAutentico(carga, _cfg.adminPub, TIPO_ACUSE_TS))) {       // un acuse sin la firma de la dirección se descarta
+          await estadoAcuses();                                                         // fija «desde» antes de guardar el primer acuse
+          const ra = aplicarAcuseTS(await leerCif("acuses"), carga);
+          if (ra.nuevos) { await guardarCif("acuses", ra.acuses); recibidos += ra.nuevos; }
+        }
         if (carga.tipo === TIPO_AJUSTES && (await perfilAutentico(carga, _cfg.adminPub, TIPO_AJUSTES))) {      // el tema del aviso solo vale si lo firma la dirección
           const ra = aplicarAjustes((await leerCif("aviso")) || null, carga);
           if (ra.cambio) await guardarCif("aviso", ra.estado);
@@ -292,5 +306,5 @@ export async function sincronizar() {
     }
   } catch (e) { conexion = false; error = error || e.message; }
   const salida = await vaciarSalida();
-  return { estado: estadoPantalla(), perfilNuevo: perfilNuevo, historialNuevo: historialNuevo, historialPendiente: historialPendiente, conexion: conexion, pendientes: salida.pendientes || 0, error: error || salida.error || "" };
+  return { estado: estadoPantalla(), recibidos: recibidos, perfilNuevo: perfilNuevo, historialNuevo: historialNuevo, historialPendiente: historialPendiente, conexion: conexion, pendientes: salida.pendientes || 0, error: error || salida.error || "" };
 }

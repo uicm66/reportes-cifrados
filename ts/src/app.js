@@ -13,7 +13,7 @@
 import * as Buzon from "./buzon-ts.js";
 import { reporteDeIntervencionTS, TIPOS_INTERVENCION, ESTADOS_INTERVENCION } from "../../src/rol-trabajo-social.js";
 
-const VERSION_TS = "ts-v3 (2026-11-03)";   // igual que CACHE en sw.js
+const VERSION_TS = "ts-v4 (2026-11-06)";   // igual que CACHE en sw.js
 if ("serviceWorker" in navigator && (location.protocol === "https:" || new URLSearchParams(location.search).get("sw") === "1")) {
   navigator.serviceWorker.register("sw.js").catch(function () { /* sin modo sin conexión */ });
 }
@@ -52,15 +52,35 @@ function aviso(texto, tipo) {
   document.body.appendChild(d);
   setTimeout(function () { if (d.parentNode) d.remove(); }, tipo === "ok" ? 3500 : 9000);
 }
+let pendIds = new Set();          // reportes que siguen en la cola de salida (todavía NO entregados a la dirección)
+let acusesEst = { acuses: {}, desde: 0 };   // acuses de recibo de la dirección: { idReporte: revRecibida }
 async function pintarPendientes() {
   const n = await Buzon.pendientesDeEnviar().catch(function () { return 0; });
   const e = $("pendientes");
   e.textContent = n ? "⏳ " + n + " por enviar" : "";
   e.style.display = n ? "inline-block" : "none";
+  // Aviso grande y fijo mientras haya reportes sin entregar (antes solo había una etiqueta chica y se podía pasar por alto).
+  const al = $("alerta-envio");
+  if (al) {
+    al.textContent = n ? "⚠ " + n + (n === 1 ? " reporte SIN ENTREGAR" : " reportes SIN ENTREGAR") + " a la dirección. Revisa tu internet: se enviarán solos en cuanto haya conexión." : "";
+    al.style.display = n ? "block" : "none";
+  }
+  const ids = await Buzon.idsPendientes().catch(function () { return []; });
+  const nueva = new Set(ids);
+  const ac = await Buzon.estadoAcuses().catch(function () { return acusesEst; });
+  const cambio = nueva.size !== pendIds.size || ids.some(function (i) { return !pendIds.has(i); }) || Object.keys(ac.acuses).length !== Object.keys(acusesEst.acuses).length;
+  pendIds = nueva; acusesEst = ac;
+  if (cambio && $("app-screen").style.display !== "none") { try { pintar(); } catch (err) { /* aún no hay lista que repintar */ } }
+}
+// Estado de entrega de un reporte: 'pend' (sigue en el celular, sin internet) · 'esp' (ya salió al buzón, falta que la dirección lo confirme) · 'ok' (la dirección lo recibió).
+function estadoEntrega(item) {
+  if (pendIds.has(item.id)) return "pend";
+  if ((item.rev || 0) < acusesEst.desde) return "ok";                    // de antes de que existieran los acuses: se da por entregado
+  return (acusesEst.acuses[item.id] || 0) >= (item.rev || 0) ? "ok" : "esp";
 }
 function avisoEnvio(r) {
-  if (r && r.pendientes) aviso("Guardado en este aparato. Se enviará a la dirección cuando haya internet (" + r.pendientes + " por enviar).", "alerta");
-  else aviso("✓ Guardado y enviado a la dirección", "ok");
+  if (r && r.pendientes) aviso("⏳ Guardado en este aparato, PENDIENTE POR ENTREGAR: se enviará cuando haya internet (" + r.pendientes + " por enviar).", "alerta");
+  else aviso("📤 Enviado al buzón. Esperando que la dirección lo reciba; la tarjeta dirá «Recibido» cuando llegue.", "ok");
   pintarPendientes();
 }
 
@@ -163,6 +183,7 @@ async function ciclo(manual) {
   if (r.perfilNuevo) await perfilCambio();
   if (r.historialNuevo) { aviso("✓ Se recuperó tu historial desde la dirección.", "ok"); if ($("app-screen").style.display !== "none") pintar(); }
   pintarPendientes();
+  if (r.recibidos) { aviso("✓ La dirección recibió " + r.recibidos + (r.recibidos === 1 ? " reporte" : " reportes"), "ok"); if ($("app-screen").style.display !== "none") pintar(); }
   if (manual) {
     $("alta-error").textContent = r.conexion === false ? "No hay conexión con la dirección. Revisa tu internet." : (r.error || "");
     $("alta-error").style.display = $("alta-error").textContent ? "block" : "none";
@@ -223,7 +244,7 @@ let tabActual = "alumno", alumnoSel = null;
 function cambiarTab(t) {
   tabActual = t;
   document.querySelectorAll(".tab").forEach(function (b) { b.classList.toggle("activo", b.dataset.tab === t); });
-  ["alumno", "periodo", "proceso"].forEach(function (x) { $("t-" + x).style.display = x === t ? "block" : "none"; });
+  ["alumno", "periodo", "proceso", "citas"].forEach(function (x) { $("t-" + x).style.display = x === t ? "block" : "none"; });
   pintar();
 }
 document.querySelectorAll(".tab").forEach(function (b) { b.addEventListener("click", function () { cambiarTab(b.dataset.tab); }); });
@@ -231,8 +252,11 @@ function pintar() {
   const hist = todos();
   const n = vigentes(hist).filter(function (i) { return i.registro.estado === "En proceso"; }).length;
   $("n-proceso").textContent = n ? "(" + n + ")" : "";
+  const nc = citasProximas(hist).filter(function (i) { return i.registro.citaFecha === hoyISO(); }).length;
+  $("n-citas").textContent = nc ? "(" + nc + " hoy)" : "";
   if (tabActual === "alumno") pintarExpediente(hist);
   else if (tabActual === "periodo") pintarPeriodo(hist);
+  else if (tabActual === "citas") pintarCitas(hist);
   else pintarProceso(hist);
 }
 
@@ -244,7 +268,8 @@ function tarjeta(item, conAlumno) {
     el("span", { text: fechaBonita(r.fecha) + (r.hora ? " · " + r.hora : "") + " · " + r.tipoIntervencion }),
     el("span", {}, [
       r.anulado ? el("span", { class: "chip anul", text: "ANULADA" }) : el("span", { class: "chip " + claseEstado(r.estado), text: r.estado }),
-      r.cartaCompromiso && !r.anulado ? el("span", { class: "chip carta", text: " 📄 Carta compromiso", style: "margin-left:4px" }) : null
+      r.cartaCompromiso && !r.anulado ? el("span", { class: "chip carta", text: " 📄 Carta compromiso", style: "margin-left:4px" }) : null,
+      r.citaFecha && !r.anulado ? el("span", { class: "chip cita", text: "📌 Cita " + fechaBonita(r.citaFecha) + (r.citaHora ? " · " + r.citaHora : ""), style: "margin-left:4px" }) : null
     ])
   ]);
   const t = el("div", { class: "intv" + (r.anulado ? " anulada" : "") }, [
@@ -252,7 +277,13 @@ function tarjeta(item, conAlumno) {
     conAlumno ? el("div", { style: "font-size:12px;font-weight:700;color:#0f766e;margin-top:3px", text: r.alumnoNombre + " · " + (r.grado || "") + "° " + (r.grupo || "") }) : null,
     el("div", { class: "asunto", text: r.asunto }),
     r.descripcion ? el("div", { class: "txt", text: r.descripcion.length > 220 ? r.descripcion.slice(0, 220) + "…" : r.descripcion }) : null,
-    r.fotos && r.fotos.length ? el("div", { class: "ayuda", text: "📷 " + r.fotos.length + " foto(s)" }) : null
+    r.fotos && r.fotos.length ? el("div", { class: "ayuda", text: "📷 " + r.fotos.length + " foto(s)" }) : null,
+    r.anulado ? null : (function () {
+      const e = estadoEntrega(item);
+      return e === "pend" ? el("div", { class: "entrega pend", text: "⏳ Pendiente por entregar (sin conexión)" })
+        : e === "esp" ? el("div", { class: "entrega esp", text: "📤 Enviado · esperando que la dirección lo reciba" })
+        : el("div", { class: "entrega ok", text: "✓ Recibido por la dirección" });
+    })()
   ]);
   t.addEventListener("click", function () { abrirModal(alumnoDeAid(item.aid) || { aid: item.aid, nombre: r.alumnoNombre, grado: r.grado, grupo: r.grupo }, item); });
   return t;
@@ -328,6 +359,53 @@ $("p-fecha").addEventListener("change", pintar);
 $("p-imprimir").addEventListener("click", function () { window.print(); });
 
 // ── en proceso ──────────────────────────────────────────────────────────────
+// Citatorios de hoy en adelante, de lo más próximo a lo más lejano (y por hora dentro del día).
+function citasProximas(hist) {
+  const hoy = hoyISO();
+  return vigentes(hist).filter(function (i) { return i.registro.citaFecha && i.registro.citaFecha >= hoy; })
+    .sort(function (a, b) { return (a.registro.citaFecha + " " + (a.registro.citaHora || "99:99")).localeCompare(b.registro.citaFecha + " " + (b.registro.citaHora || "99:99")); });
+}
+function pintarCitas(hist) {
+  const cont = $("c-lista"), items = citasProximas(hist);
+  cont.textContent = "";
+  if (!items.length) { cont.appendChild(el("div", { class: "vacio", text: "No hay padres citados de hoy en adelante." })); return; }
+  let prev = null;
+  items.forEach(function (i) {
+    const f = i.registro.citaFecha;
+    if (f !== prev) {
+      prev = f;
+      cont.appendChild(el("div", { style: "background:#fef3c7;color:#92400e;font-weight:800;font-size:13px;padding:7px 12px;border-radius:8px;margin:10px 0 6px", text: "📌 " + fechaBonita(f) + (f === hoyISO() ? " · HOY" : "") }));
+    }
+    cont.appendChild(tarjeta(i, true));
+  });
+}
+// «Nuevo citatorio»: se busca al alumno y se abre el reporte con la cita ya marcada.
+$("c-buscar").addEventListener("input", function () {
+  const q = norm($("c-buscar").value), sug = $("c-sug");
+  sug.textContent = "";
+  if (q.length < 2) { sug.style.display = "none"; return; }
+  const toks = q.split(/\s+/);
+  const res = alumnos().filter(function (a) {
+    const nom = norm(a.nombre), pal = nom.split(/\s+/);
+    return toks.every(function (t) { return pal.some(function (w) { return w.indexOf(t) === 0; }) || (t.length >= 3 && nom.indexOf(t) !== -1); });
+  }).slice(0, 12);
+  if (!res.length) { sug.style.display = "none"; return; }
+  res.forEach(function (a) {
+    const d = el("div", {}, [el("b", { text: a.nombre }), el("span", { style: "color:#6b7280;font-size:11px", text: " " + (a.grado || "") + "° " + (a.grupo || "") })]);
+    d.addEventListener("pointerdown", function (e) {
+      e.preventDefault();
+      $("c-buscar").value = ""; sug.style.display = "none";
+      abrirModal(a, null);
+      $("m-tipo").value = "Citatorio a Tutor";
+      $("m-cita").checked = true; $("m-cita-caja").style.display = "block";
+      if (!$("m-cita-fecha").value) $("m-cita-fecha").value = hoyISO();
+    });
+    sug.appendChild(d);
+  });
+  sug.style.display = "block";
+});
+document.addEventListener("click", function (e) { if (!e.target.closest("#c-sug") && e.target.id !== "c-buscar") $("c-sug").style.display = "none"; });
+
 function pintarProceso(hist) {
   const items = vigentes(hist).filter(function (i) { return i.registro.estado === "En proceso"; })
     .sort(function (a, b) { return (a.registro.fecha + (a.registro.hora || "")).localeCompare(b.registro.fecha + (b.registro.hora || "")); });
@@ -362,9 +440,12 @@ function abrirModal(alumno, item) {
   $("m-hora").value = r ? r.hora : horaAhora();
   $("m-asunto").value = r ? r.asunto : ""; $("m-descripcion").value = r ? r.descripcion : ""; $("m-acuerdos").value = r ? r.acuerdos : "";
   $("m-carta").checked = !!(r && r.cartaCompromiso);
+  const hayCita = !!(r && r.citaFecha);
+  $("m-cita").checked = hayCita; $("m-cita-caja").style.display = hayCita ? "block" : "none";
+  $("m-cita-fecha").value = hayCita ? r.citaFecha : ""; $("m-cita-hora").value = hayCita ? (r.citaHora || "") : ""; $("m-cita-persona").value = hayCita ? (r.citaPersona || "") : "";
   modalFotos = r ? r.fotos.slice() : [];
   $("m-archivo").value = "";
-  ["m-tipo", "m-estado", "m-fecha", "m-hora", "m-asunto", "m-descripcion", "m-acuerdos", "m-carta", "m-archivo"].forEach(function (i) { $(i).disabled = anulada; });
+  ["m-tipo", "m-estado", "m-fecha", "m-hora", "m-asunto", "m-descripcion", "m-acuerdos", "m-carta", "m-cita", "m-cita-fecha", "m-cita-hora", "m-cita-persona", "m-archivo"].forEach(function (i) { $(i).disabled = anulada; });
   $("m-fotos-caja").style.display = anulada ? "none" : "block";
   $("m-guardar").style.display = anulada ? "none" : "";
   $("m-anular").style.display = item && !anulada ? "" : "none";
@@ -377,6 +458,7 @@ function abrirModal(alumno, item) {
 }
 function cerrarModal() { $("modal").style.display = "none"; modalAlumno = null; modalItem = null; modalFotos = []; }
 $("m-cerrar").addEventListener("click", cerrarModal);
+$("m-cita").addEventListener("change", function () { $("m-cita-caja").style.display = this.checked ? "block" : "none"; if (this.checked && !$("m-cita-fecha").value) $("m-cita-fecha").value = hoyISO(); });
 
 // Reduce la foto en el aparato antes de guardarla (un documento del buzón no puede pasar de 1 MB).
 const INTENTOS_FOTO = [[900, 0.6], [800, 0.5], [640, 0.45], [480, 0.4]];
@@ -416,7 +498,8 @@ function datosModal(extra) {
     aid: a.aid, alumnoNombre: a.nombre, grado: a.grado, grupo: a.grupo,
     tipoIntervencion: $("m-tipo").value, estado: $("m-estado").value, fecha: $("m-fecha").value, hora: $("m-hora").value,
     asunto: $("m-asunto").value, descripcion: $("m-descripcion").value, acuerdos: $("m-acuerdos").value,
-    cartaCompromiso: $("m-carta").checked, fotos: modalFotos, anulado: false, motivoAnulacion: ""
+    cartaCompromiso: $("m-carta").checked, fotos: modalFotos, anulado: false, motivoAnulacion: "",
+    citaFecha: $("m-cita").checked ? $("m-cita-fecha").value : "", citaHora: $("m-cita").checked ? $("m-cita-hora").value : "", citaPersona: $("m-cita").checked ? $("m-cita-persona").value : ""
   }, extra || {});
 }
 async function guardarModal(extra) {
@@ -425,6 +508,7 @@ async function guardarModal(extra) {
   if (btn.disabled) return;
   btn.disabled = true; btn2.disabled = true;
   try {
+    if ($("m-cita").checked && !$("m-cita-fecha").value) throw new Error("Elige el día de la cita, o quita la marca de «Se cita a padre, madre o tutor».");
     const carga = reporteDeIntervencionTS(modalId, datosModal(extra), { trabajador: Buzon.perfil().nombre });
     const r = await Buzon.guardarReporte(carga);
     const aid = modalAlumno.aid, alu = modalAlumno;

@@ -12,6 +12,7 @@ export const ROL_TS = "trabajo-social";
 export const TIPO_PERFIL_TS = "perfil-ts";
 export const TIPO_REPORTE_TS = "ts";
 export const TIPO_RESPALDO_TS = "ts-historial";
+export const TIPO_ACUSE_TS = "ts-acuse";
 const MAX_ALUMNOS = 3000;
 const MAX_FOTOS = 4;
 const MAX_FOTO_CHARS = 200 * 1024;           // una foto ya reducida (jpeg ~900 px) pesa menos
@@ -87,6 +88,10 @@ export function limpiarRegistroTS(d) {
     cartaCompromiso: !!d.cartaCompromiso,
     estado: ESTADOS_INTERVENCION.includes(d.estado) ? d.estado : "En proceso",
     fecha: d.fecha, hora: /^\d{2}:\d{2}$/.test(d.hora || "") ? d.hora : "",
+    // Citatorio a padres/tutor (2026-11-06): solo si trae fecha válida; sin ella se ignoran los otros dos campos.
+    citaFecha: esFecha(d.citaFecha) ? d.citaFecha : "",
+    citaHora: esFecha(d.citaFecha) && /^\d{2}:\d{2}$/.test(d.citaHora || "") ? d.citaHora : "",
+    citaPersona: esFecha(d.citaFecha) ? corto(d.citaPersona, 120) : "",
     anulado: !!d.anulado, motivoAnulacion: corto(d.motivoAnulacion, 200),
     fotos: fotos
   };
@@ -107,6 +112,32 @@ export function reporteDeIntervencionTS(id, datos, opciones) {
     campos: [["Trabajo Social", trabajador || "(sin nombre)"], ["Fecha", reg.fecha], ["Alumno/a", reg.alumnoNombre], ["Asunto", reg.asunto]],
     datos: { id: id, trabajador: trabajador, registro: reg }
   };
+}
+
+// ---------- acuse de recibo (de la dirección al celular de la trabajadora) ----------
+// Cuando la Mac recibe y guarda un reporte, avisa (cifrado y FIRMADO) al celular de la trabajadora: «recibí este reporte, versión rev».
+// Así su celular puede decir «✓ Recibido por la dirección» en vez de solo «enviado».
+const ID_REPORTE_OK = /^[A-Za-z0-9_-]{3,80}$/;
+export function mensajeAcuseTS(items, ahora) {
+  const hoy = ahora || new Date();
+  const reportes = (items || []).filter(function (i) { return i && ID_REPORTE_OK.test(i.id || ""); }).slice(0, 200).map(function (i) { return { id: i.id, rev: Number(i.rev) || 0 }; });
+  return { rid: "ts-acuse-" + hoy.getTime() + "-" + Math.random().toString(36).slice(2, 6), rev: hoy.getTime(), rol: "sistema", tipo: TIPO_ACUSE_TS, fecha: hoy.toISOString().slice(0, 10),
+    resumen: "Acuse de recibo de reportes de Trabajo Social (" + reportes.length + ")", campos: [], datos: { reportes: reportes } };
+}
+// `acuses`: { idDelReporte: revRecibida }. Devuelve { acuses, nuevos } (solo se queda con las 3000 versiones más recientes).
+export function aplicarAcuseTS(acuses, carga) {
+  const a = Object.assign({}, acuses || {});
+  let nuevos = 0;
+  if (!carga || carga.tipo !== TIPO_ACUSE_TS || !carga.datos || !Array.isArray(carga.datos.reportes)) return { acuses: a, nuevos: 0 };
+  carga.datos.reportes.forEach(function (r) {
+    if (!r || !ID_REPORTE_OK.test(r.id || "")) return;
+    const rev = Number(r.rev) || 0;
+    if (r.id in a && a[r.id] >= rev) return;
+    a[r.id] = rev; nuevos++;
+  });
+  const ks = Object.keys(a);
+  if (ks.length > 3000) ks.sort(function (x, y) { return a[x] - a[y]; }).slice(0, ks.length - 3000).forEach(function (k) { delete a[k]; });
+  return { acuses: a, nuevos: nuevos };
 }
 
 // ---------- respaldo del historial (de la dirección al aparato nuevo) ----------
