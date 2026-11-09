@@ -13,7 +13,7 @@
 import * as Buzon from "./buzon-ts.js";
 import { reporteDeIntervencionTS, TIPOS_INTERVENCION, ESTADOS_INTERVENCION } from "../../src/rol-trabajo-social.js";
 
-const VERSION_TS = "ts-v5 (2026-11-06)";   // igual que CACHE en sw.js
+const VERSION_TS = "ts-v6 (2026-11-09)";   // igual que CACHE en sw.js
 if ("serviceWorker" in navigator && (location.protocol === "https:" || new URLSearchParams(location.search).get("sw") === "1")) {
   navigator.serviceWorker.register("sw.js").catch(function () { /* sin modo sin conexión */ });
 }
@@ -252,7 +252,7 @@ function pintar() {
   const hist = todos();
   const n = vigentes(hist).filter(function (i) { return i.registro.estado === "En proceso"; }).length;
   $("n-proceso").textContent = n ? "(" + n + ")" : "";
-  const nc = citasProximas(hist).filter(function (i) { return i.registro.citaFecha === hoyISO(); }).length;
+  const nc = citasProximas(hist).filter(function (i) { return i.registro.citaFecha === hoyISO() && !i.registro.citaAtendida; }).length;
   $("n-citas").textContent = nc ? "(" + nc + " hoy)" : "";
   if (tabActual === "alumno") pintarExpediente(hist);
   else if (tabActual === "periodo") pintarPeriodo(hist);
@@ -262,6 +262,23 @@ function pintar() {
 
 // tarjeta de una intervención
 function claseEstado(e) { return e === "Resuelto" ? "res" : e === "Pendiente" ? "pend" : e === "Canalizado" ? "can" : "proc"; }
+// «Atendido» (2026-11-09): casilla en la tarjeta del citatorio. Reenvía el reporte completo con la marca nueva; la Mac la recibe por el buzón.
+function botonAtendido(item) {
+  const r = item.registro, ya = !!r.citaAtendida;
+  const b = el("button", { type: "button", class: "btn-atendido" + (ya ? " ya" : ""), text: ya ? "✅ ATENDIDO (toca para quitar)" : "☐ Marcar como atendido",
+    style: "margin-top:8px;width:100%;padding:10px;border-radius:10px;font-weight:800;font-size:13px;border:2px solid " + (ya ? "#16a34a;background:#dcfce7;color:#166534" : "#d97706;background:#fffbeb;color:#92400e") });
+  b.addEventListener("click", async function (ev) {
+    ev.stopPropagation();
+    if (b.disabled) return;
+    b.disabled = true;
+    try {
+      const datos = Object.assign({}, r, { citaAtendida: !ya, citaAtendidaEn: ya ? "" : new Date().toISOString() });
+      const res = await Buzon.guardarReporte(reporteDeIntervencionTS(item.id, datos, { trabajador: Buzon.perfil().nombre }));
+      pintar(); avisoEnvio(res);
+    } catch (e) { b.disabled = false; window.alert(e.message || "No se pudo guardar."); }
+  });
+  return b;
+}
 function tarjeta(item, conAlumno) {
   const r = item.registro;
   const top = el("div", { class: "top" }, [
@@ -270,7 +287,8 @@ function tarjeta(item, conAlumno) {
       r.anulado ? el("span", { class: "chip anul", text: "ANULADA" }) : el("span", { class: "chip " + claseEstado(r.estado), text: r.estado }),
       r.papel && !r.anulado ? el("span", { class: "chip", text: r.papel === "reportado" ? "🌸 Es reportado" : "🟡 Reporta", style: "margin-left:4px;background:" + (r.papel === "reportado" ? "#fce7f3;color:#9d174d" : "#fef9c3;color:#854d0e") }) : null,
       r.cartaCompromiso && !r.anulado ? el("span", { class: "chip carta", text: " 📄 Carta compromiso", style: "margin-left:4px" }) : null,
-      r.citaFecha && !r.anulado ? el("span", { class: "chip cita", text: "📌 Cita " + fechaBonita(r.citaFecha) + (r.citaHora ? " · " + r.citaHora : ""), style: "margin-left:4px" }) : null
+      r.citaFecha && !r.anulado ? el("span", { class: "chip cita", text: "📌 Cita " + fechaBonita(r.citaFecha) + (r.citaHora ? " · " + r.citaHora : ""), style: "margin-left:4px" }) : null,
+      r.citaFecha && !r.anulado && r.citaAtendida ? el("span", { class: "chip res", text: "✅ Atendido", style: "margin-left:4px" }) : null
     ])
   ]);
   const t = el("div", { class: "intv" + (r.anulado ? " anulada" : "") }, [
@@ -279,6 +297,7 @@ function tarjeta(item, conAlumno) {
     el("div", { class: "asunto", text: r.asunto }),
     r.descripcion ? el("div", { class: "txt", text: r.descripcion.length > 220 ? r.descripcion.slice(0, 220) + "…" : r.descripcion }) : null,
     r.fotos && r.fotos.length ? el("div", { class: "ayuda", text: "📷 " + r.fotos.length + " foto(s)" }) : null,
+    r.citaFecha && !r.anulado ? botonAtendido(item) : null,
     r.anulado ? null : (function () {
       const e = estadoEntrega(item);
       return e === "pend" ? el("div", { class: "entrega pend", text: "⏳ Pendiente por entregar (sin conexión)" })
@@ -444,10 +463,11 @@ function abrirModal(alumno, item) {
   $("m-papel").value = (r && r.papel) || "";
   const hayCita = !!(r && r.citaFecha);
   $("m-cita").checked = hayCita; $("m-cita-caja").style.display = hayCita ? "block" : "none";
+  $("m-cita-atendida").checked = !!(hayCita && r.citaAtendida); $("m-cita-atendida").dataset.tocado = "";
   $("m-cita-fecha").value = hayCita ? r.citaFecha : ""; $("m-cita-hora").value = hayCita ? (r.citaHora || "") : ""; $("m-cita-persona").value = hayCita ? (r.citaPersona || "") : "";
   modalFotos = r ? r.fotos.slice() : [];
   $("m-archivo").value = "";
-  ["m-tipo", "m-estado", "m-fecha", "m-hora", "m-asunto", "m-papel", "m-descripcion", "m-acuerdos", "m-carta", "m-cita", "m-cita-fecha", "m-cita-hora", "m-cita-persona", "m-archivo"].forEach(function (i) { $(i).disabled = anulada; });
+  ["m-tipo", "m-estado", "m-fecha", "m-hora", "m-asunto", "m-papel", "m-descripcion", "m-acuerdos", "m-carta", "m-cita", "m-cita-fecha", "m-cita-hora", "m-cita-persona", "m-cita-atendida", "m-archivo"].forEach(function (i) { $(i).disabled = anulada; });
   $("m-fotos-caja").style.display = anulada ? "none" : "block";
   $("m-guardar").style.display = anulada ? "none" : "";
   $("m-anular").style.display = item && !anulada ? "" : "none";
@@ -502,7 +522,8 @@ function datosModal(extra) {
     asunto: $("m-asunto").value, descripcion: $("m-descripcion").value, acuerdos: $("m-acuerdos").value,
     papel: $("m-papel").value, cartaCompromiso: $("m-carta").checked, fotos: modalFotos, anulado: false, motivoAnulacion: "",
     citaFecha: $("m-cita").checked ? $("m-cita-fecha").value : "", citaHora: $("m-cita").checked ? $("m-cita-hora").value : "", citaPersona: $("m-cita").checked ? $("m-cita-persona").value : ""
-  }, extra || {});
+  }, $("m-cita-atendida").dataset.tocado && $("m-cita").checked   // solo si ella tocó la casilla: así no pisa lo que la Mac haya marcado
+    ? { citaAtendida: $("m-cita-atendida").checked, citaAtendidaEn: $("m-cita-atendida").checked ? new Date().toISOString() : "" } : {}, extra || {});
 }
 async function guardarModal(extra) {
   const msg = $("m-msg"); msg.style.color = "#b91c1c"; msg.textContent = "";
@@ -521,6 +542,7 @@ async function guardarModal(extra) {
   } catch (e) { msg.textContent = e.message; }
   finally { btn.disabled = false; btn2.disabled = false; }
 }
+$("m-cita-atendida").addEventListener("change", function () { this.dataset.tocado = "1"; });
 $("m-guardar").addEventListener("click", function () { guardarModal(); });
 $("m-anular").addEventListener("click", function () {
   const motivo = window.prompt("¿Por qué se anula esta intervención? (opcional)", "");

@@ -94,6 +94,12 @@ export function limpiarRegistroTS(d) {
     citaFecha: esFecha(d.citaFecha) ? d.citaFecha : "",
     citaHora: esFecha(d.citaFecha) && /^\d{2}:\d{2}$/.test(d.citaHora || "") ? d.citaHora : "",
     citaPersona: esFecha(d.citaFecha) ? corto(d.citaPersona, 120) : "",
+    // «Atendido» (2026-11-09): la trabajadora social lo marca en el celular. La clave viaja SOLO si trae true/false explícito:
+    // una copia vieja sin la clave no debe borrar lo que la Mac ya marcó. Sin citatorio no hay nada que atender.
+    ...(typeof d.citaAtendida === "boolean"
+      ? { citaAtendida: esFecha(d.citaFecha) && d.citaAtendida,
+          citaAtendidaEn: esFecha(d.citaFecha) && d.citaAtendida && typeof d.citaAtendidaEn === "string" && !isNaN(Date.parse(d.citaAtendidaEn)) ? d.citaAtendidaEn.slice(0, 30) : "" }
+      : {}),
     anulado: !!d.anulado, motivoAnulacion: corto(d.motivoAnulacion, 200),
     fotos: fotos
   };
