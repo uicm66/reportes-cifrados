@@ -13,7 +13,7 @@
 import * as Buzon from "./buzon-ts.js";
 import { reporteDeIntervencionTS, TIPOS_INTERVENCION, ESTADOS_INTERVENCION } from "../../src/rol-trabajo-social.js";
 
-const VERSION_TS = "ts-v6 (2026-11-09)";   // igual que CACHE en sw.js
+const VERSION_TS = "ts-v7 (2026-11-10)";   // igual que CACHE en sw.js
 if ("serviceWorker" in navigator && (location.protocol === "https:" || new URLSearchParams(location.search).get("sw") === "1")) {
   navigator.serviceWorker.register("sw.js").catch(function () { /* sin modo sin conexión */ });
 }
@@ -263,10 +263,14 @@ function pintar() {
 // tarjeta de una intervención
 function claseEstado(e) { return e === "Resuelto" ? "res" : e === "Pendiente" ? "pend" : e === "Canalizado" ? "can" : "proc"; }
 // «Atendido» (2026-11-09): casilla en la tarjeta del citatorio. Reenvía el reporte completo con la marca nueva; la Mac la recibe por el buzón.
-function botonAtendido(item) {
+function botonAtendido(item, compacto) {
   const r = item.registro, ya = !!r.citaAtendida;
-  const b = el("button", { type: "button", class: "btn-atendido" + (ya ? " ya" : ""), text: ya ? "✅ ATENDIDO (toca para quitar)" : "☐ Marcar como atendido",
-    style: "margin-top:8px;width:100%;padding:10px;border-radius:10px;font-weight:800;font-size:13px;border:2px solid " + (ya ? "#16a34a;background:#dcfce7;color:#166534" : "#d97706;background:#fffbeb;color:#92400e") });
+  // compacto = el mismo botón que en la pantalla «Citatorios» de la Mac (pequeño, a la derecha); si no, la franja ancha de siempre.
+  const b = compacto
+    ? el("button", { type: "button", class: "btn-atendido" + (ya ? " ya" : ""), text: ya ? "✅ ATENDIDO" : "☐ Atendido", title: ya ? "Toca para quitar la marca" : "Marcar como atendido",
+        style: "padding:6px 12px;border-radius:8px;font-size:12px;font-weight:800;white-space:nowrap;cursor:pointer;border:2px solid " + (ya ? "#16a34a;background:#16a34a;color:white" : "#94a3b8;background:white;color:#475569") })
+    : el("button", { type: "button", class: "btn-atendido" + (ya ? " ya" : ""), text: ya ? "✅ ATENDIDO (toca para quitar)" : "☐ Marcar como atendido",
+        style: "margin-top:8px;width:100%;padding:10px;border-radius:10px;font-weight:800;font-size:13px;border:2px solid " + (ya ? "#16a34a;background:#dcfce7;color:#166534" : "#d97706;background:#fffbeb;color:#92400e") });
   b.addEventListener("click", async function (ev) {
     ev.stopPropagation();
     if (b.disabled) return;
@@ -304,6 +308,38 @@ function tarjeta(item, conAlumno) {
         : e === "esp" ? el("div", { class: "entrega esp", text: "📤 Enviado · esperando que la dirección lo reciba" })
         : el("div", { class: "entrega ok", text: "✓ Recibido por la dirección" });
     })()
+  ]);
+  t.addEventListener("click", function () { abrirModal(alumnoDeAid(item.aid) || { aid: item.aid, nombre: r.alumnoNombre, grado: r.grado, grupo: r.grupo }, item); });
+  return t;
+}
+// Tarjeta de la pestaña «Citatorios»: misma presentación que la pantalla Trabajo Social → Citatorios de la Mac
+// (hora y alumno arriba, «Se cita a», tipo y asunto, quién atendió; a la derecha el estado y el botón ATENDIDO).
+function tarjetaCita(item) {
+  const r = item.registro, ya = !!r.citaAtendida;
+  const stColor = r.estado === "Resuelto" ? "#16a34a" : r.estado === "Canalizado" ? "#9333ea" : r.estado === "Pendiente" ? "#dc2626" : "#0284c7";
+  const e = estadoEntrega(item);
+  const t = el("div", { class: "intv-cita",
+    style: "padding:14px 16px;margin-bottom:12px;background:" + (ya ? "#f0fdf4" : "white") + ";border:2px solid " + (ya ? "#86efac" : "#cbd5e1") + ";border-left:6px solid " + (ya ? "#16a34a" : "#f59e0b") + ";border-radius:12px;box-shadow:0 2px 6px rgba(15,23,42,0.08);cursor:pointer;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap" }, [
+    el("div", { style: "flex:1;min-width:190px" }, [
+      el("div", { style: "display:flex;align-items:center;gap:8px;flex-wrap:wrap" }, [
+        el("span", { style: "font-size:14px;font-weight:800;color:#0f172a", text: "🕐 " + (r.citaHora || "sin hora") }),
+        el("span", { style: "font-size:13px;font-weight:700;color:#1e293b", text: r.alumnoNombre || "" }),
+        el("span", { style: "font-size:11px;color:#64748b", text: ((r.grado || "") + " " + (r.grupo || "")).trim() })
+      ]),
+      r.citaPersona ? el("div", { style: "margin-top:4px;font-size:12px;font-weight:700;color:#92400e", text: "Se cita a: " + r.citaPersona }) : null,
+      el("div", { style: "margin-top:4px;font-size:12px;color:#334155" }, [
+        el("strong", { text: (r.tipoIntervencion || "") + ": " }),
+        el("span", { text: r.asunto || "" })
+      ]),
+      el("div", { style: "margin-top:2px;font-size:10px;color:#94a3b8", text: "Reporte del " + fechaBonita(r.fecha) + " · Atendió: " + (r.atendidoPor || "Trabajo Social") }),
+      e === "pend" ? el("div", { style: "margin-top:2px;font-size:10px;color:#b45309;font-weight:700", text: "⏳ Pendiente por entregar (sin conexión)" })
+        : e === "esp" ? el("div", { style: "margin-top:2px;font-size:10px;color:#64748b", text: "📤 Enviado · esperando que la dirección lo reciba" }) : null
+    ]),
+    el("div", { style: "display:flex;flex-direction:column;align-items:flex-end;gap:6px" }, [
+      el("span", { style: "font-size:11px;font-weight:600;color:" + stColor + ";background:#f1f5f9;padding:2px 8px;border-radius:4px;white-space:nowrap", text: r.estado || "" }),
+      botonAtendido(item, true),
+      ya && r.citaAtendidaEn ? el("span", { style: "font-size:10px;color:#166534", text: "el " + fechaBonita(String(r.citaAtendidaEn).slice(0, 10)) }) : null
+    ])
   ]);
   t.addEventListener("click", function () { abrirModal(alumnoDeAid(item.aid) || { aid: item.aid, nombre: r.alumnoNombre, grado: r.grado, grupo: r.grupo }, item); });
   return t;
@@ -396,7 +432,7 @@ function pintarCitas(hist) {
       prev = f;
       cont.appendChild(el("div", { style: "background:#fef3c7;color:#92400e;font-weight:800;font-size:13px;padding:7px 12px;border-radius:8px;margin:10px 0 6px", text: "📌 " + fechaBonita(f) + (f === hoyISO() ? " · HOY" : "") }));
     }
-    cont.appendChild(tarjeta(i, true));
+    cont.appendChild(tarjetaCita(i));
   });
 }
 // «Nuevo citatorio»: se busca al alumno y se abre el reporte con la cita ya marcada.
